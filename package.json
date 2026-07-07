@@ -1,0 +1,16 @@
+{
+    "name": "event-driven-media-pipeline",
+    "version": "1.0.0",
+    "private": true,
+    "workspaces": [
+      "apps/*",
+      "infra",
+      "packages/*"
+    ],
+    "scripts": {
+      "dev:web": "npm run dev -w apps/web",
+      "build:web": "npm run build -w apps/web",
+      "cdk": "npm run cdk -w infra",
+      "deploy": "npm run deploy -w infra"
+    }
+  }
