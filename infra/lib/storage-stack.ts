@@ -6,12 +6,17 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambdaNodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as s3Notifications from "aws-cdk-lib/aws-s3-notifications";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+
+interface StorageStackProps extends cdk.StackProps {
+  metadataTable: dynamodb.Table;
+}
 
 export class StorageStack extends cdk.Stack {
   public readonly ingestBucket: s3.Bucket;
   public readonly processedBucket: s3.Bucket;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: StorageStackProps) {
     super(scope, id, props);
 
     this.ingestBucket = new s3.Bucket(this, "IngestBucket", {
@@ -65,12 +70,14 @@ export class StorageStack extends cdk.Stack {
         environment: {
           INGEST_BUCKET_NAME: this.ingestBucket.bucketName,
           PROCESSED_BUCKET_NAME: this.processedBucket.bucketName,
+          METADATA_TABLE_NAME: props.metadataTable.tableName,
         },
       }
     );
 
     this.ingestBucket.grantRead(processorLambda);
     this.processedBucket.grantWrite(processorLambda);
+    props.metadataTable.grantWriteData(processorLambda);
 
     processorLambda.addEventSource(
       new lambdaEventSources.SqsEventSource(processingQueue, {
