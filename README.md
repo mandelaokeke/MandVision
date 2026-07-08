@@ -1,39 +1,75 @@
 # MandVision
-Serverless AWS event-driven image and document processing pipeline using S3, Lambda, API Gateway, SQS, Step Functions, Rekognition, Textract, DynamoDB, and CDK.
+MandVision is a serverless, event-driven AI image processing platform built on AWS.
+Users upload JPG/PNG images through a Next.js dashboard using secure pre-signed S3 URLs. Once uploaded, S3 events trigger an asynchronous processing pipeline powered by SQS, Lambda, Amazon Rekognition, DynamoDB, and WebSocket notifications.
+## Architecture
+```mermaid
+flowchart TD
+A[Next.js Frontend] --> B[API Gateway REST API]
+    B --> C[Presign URL Lambda]
+    C --> D[S3 Ingest Bucket]
+    D --> E[S3 Object Created Event]
+    E --> F[SQS Processing Queue]
+    F --> G[Media Processor Lambda]
+    G --> H[Amazon Rekognition]
+    G --> I[DynamoDB Metadata Table]
+    G --> J[API Gateway WebSocket API]
+    J --> A
+    A --> K[GET /media/{fileId}]
+    K --> L[Get Media Lambda]
+    L --> I
+```
 
-A production-inspired serverless application that automatically processes images and documents uploaded by users using an event-driven AWS architecture.
+## AWS Services Used
 
-Users upload media through a secure web application using pre-signed S3 URLs. Upload events trigger an asynchronous processing pipeline powered by Amazon SQS, AWS Lambda, Step Functions, Amazon Rekognition, and Amazon Textract. Metadata is stored in DynamoDB, and users are notified when processing is complete.
+- Amazon S3
+- Amazon API Gateway (REST)
+- Amazon API Gateway (WebSocket)
+- AWS Lambda
+- Amazon SQS
+- Amazon DynamoDB
+- Amazon Rekognition
+- AWS CDK
+- IAM
+- CloudWatch
+
+## Screenshots
+
+![Dashboard](docs/screenshots/dashboard.jpg)
+
+---
+
+## Upload in Progress
+
+![Uploading](docs/screenshots/Processing.jpg)
+
+---
+
+## Processing Results
+
+![Results](docs/screenshots/results.png)
+
+---
+
+## DynamoDB Metadata
+
+![DynamoDB](docs/screenshots/dynamodb.png)
+
+---
 
 ## Architecture
 
-Next.js → API Gateway → Lambda → S3 → EventBridge/SQS → Processing Lambda → Rekognition/Textract → DynamoDB → SNS
+![Architecture](docs/screenshots/architecture.png)
 
-## Tech Stack
+---
 
-- TypeScript
-- Next.js
-- AWS CDK
-- Amazon S3
-- AWS Lambda
-- API Gateway
-- Amazon SQS
-- AWS Step Functions
-- Amazon Rekognition
-- Amazon Textract
-- Amazon DynamoDB
-- Amazon SNS
-- GitHub Actions
+## Future Enhancements
 
-## Features
-
-- Secure browser uploads using pre-signed S3 URLs
-- Event-driven processing pipeline
-- Image labeling and moderation with Amazon Rekognition
-- Document text extraction with Amazon Textract
+- Amazon Cognito authentication
+- User-specific upload history
+- Search images by detected labels
 - Thumbnail generation
-- Metadata persistence in DynamoDB
-- Asynchronous notifications
-- Infrastructure as Code with AWS CDK
+- Amazon Textract document support
+- Step Functions workflow orchestration
+- Email notifications with SNS/SES
+- CloudFront + custom domain
 - CI/CD with GitHub Actions
-- CloudWatch monitoring and alarms

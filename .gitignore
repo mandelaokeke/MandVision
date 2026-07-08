@@ -1,9 +1,12 @@
 node_modules/
 .next/
+out/
 cdk.out/
 dist/
 build/
 .env
-.env.local
+.env.*
+!.env.example
 .DS_Store
 coverage/
+npm-debug.log*

@@ -7,9 +7,13 @@ import * as lambdaNodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as s3Notifications from "aws-cdk-lib/aws-s3-notifications";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 
 interface StorageStackProps extends cdk.StackProps {
   metadataTable: dynamodb.Table;
+  connectionsTable: dynamodb.Table;
+  websocketApi: apigwv2.WebSocketApi;
 }
 
 export class StorageStack extends cdk.Stack {
@@ -71,6 +75,8 @@ export class StorageStack extends cdk.Stack {
           INGEST_BUCKET_NAME: this.ingestBucket.bucketName,
           PROCESSED_BUCKET_NAME: this.processedBucket.bucketName,
           METADATA_TABLE_NAME: props.metadataTable.tableName,
+          CONNECTIONS_TABLE_NAME: props.connectionsTable.tableName,
+          WEBSOCKET_API_ENDPOINT: `https://${props.websocketApi.apiId}.execute-api.${this.region}.amazonaws.com/prod`,
         },
       }
     );
@@ -78,6 +84,21 @@ export class StorageStack extends cdk.Stack {
     this.ingestBucket.grantRead(processorLambda);
     this.processedBucket.grantWrite(processorLambda);
     props.metadataTable.grantWriteData(processorLambda);
+    props.connectionsTable.grantReadData(processorLambda);
+    processorLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["rekognition:DetectLabels"],
+        resources: ["*"],
+      })
+    );
+    processorLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["execute-api:ManageConnections"],
+        resources: [
+          `arn:aws:execute-api:${this.region}:${this.account}:${props.websocketApi.apiId}/prod/POST/@connections/*`,
+        ],
+      })
+    );
 
     processorLambda.addEventSource(
       new lambdaEventSources.SqsEventSource(processingQueue, {

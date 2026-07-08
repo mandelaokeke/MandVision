@@ -3,14 +3,21 @@
     "version": "1.0.0",
     "private": true,
     "workspaces": [
-      "apps/*",
-      "infra",
-      "packages/*"
+        "apps/*",
+        "infra",
+        "packages/*"
     ],
     "scripts": {
-      "dev:web": "npm run dev -w apps/web",
-      "build:web": "npm run build -w apps/web",
-      "cdk": "npm run cdk -w infra",
-      "deploy": "npm run deploy -w infra"
+        "dev:web": "npm run dev -w apps/web",
+        "build:web": "npm run build -w apps/web",
+        "cdk": "npm run cdk -w infra",
+        "deploy": "npm run deploy -w infra"
+    },
+    "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.1081.0",
+        "@aws-sdk/lib-dynamodb": "^3.1081.0",
+        "next": "^16.2.10",
+        "react": "^19.2.7",
+        "react-dom": "^19.2.7"
     }
-  }
+}
