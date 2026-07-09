@@ -16,7 +16,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#070b10] text-white">
       <DashboardHeader />
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-6 py-8 lg:grid-cols-[0.95fr_1.05fr]">
+      <section className="mx-auto grid max-w-7xl gap-8 px-6 py-8 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-6">
           <UploadPanel
             uploading={upload.uploading}
@@ -27,20 +27,25 @@ export default function Home() {
 
           <PreviewCard
             fileName={upload.file?.name}
-            previewUrl={upload.previewUrl}
+            previewUrl={upload.selectedHistoryItem ? null : upload.previewUrl}
             stage={upload.stage}
             progressLabel={upload.progressLabel}
             uploadedAt={upload.metadata?.uploadedAt}
+            historicalSelected={Boolean(upload.selectedHistoryItem)}
           />
 
           <StatusAlert stage={upload.stage} status={upload.status} />
         </div>
 
         <div className="space-y-6">
-          <ResultsCard result={upload.result} />
-          <HistoryCard items={upload.history} />
+          <ResultsCard result={upload.selectedHistoryItem ?? upload.result} />
+          <HistoryCard
+            items={upload.history}
+            selectedFileId={upload.selectedHistoryItem?.fileId}
+            onSelectItem={upload.selectHistoryItem}
+          />
           <MetadataCard
-            metadata={upload.metadata}
+            metadata={upload.selectedHistoryItem ?? upload.metadata}
             fileName={upload.file?.name}
             fileSize={upload.file?.size}
             stage={upload.stage}

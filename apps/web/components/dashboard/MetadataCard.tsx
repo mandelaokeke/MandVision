@@ -1,7 +1,7 @@
 import { Database } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { UploadMetadata, UploadStage } from "@/hooks/useUpload";
+import type { MediaResult, UploadMetadata, UploadStage } from "@/hooks/useUpload";
 
 const formatBytes = (bytes?: number) => {
   if (!bytes) return "—";
@@ -26,13 +26,29 @@ export function MetadataCard({
   stage,
   progressLabel,
 }: {
-  metadata: UploadMetadata | null;
+  metadata: UploadMetadata | MediaResult | null;
   fileName?: string;
   fileSize?: number;
   stage: UploadStage;
   progressLabel: string;
 }) {
   const status = stage === "complete" ? "PROCESSING REQUEST SENT" : progressLabel.toUpperCase();
+
+  const metadataKey = "key" in (metadata || {})
+    ? (metadata as UploadMetadata).key
+    : (metadata as MediaResult | null)?.objectKey;
+
+  const metadataFileName = "fileName" in (metadata || {})
+    ? (metadata as UploadMetadata).fileName
+    : (metadata as MediaResult | null)?.originalFileName;
+
+  const metadataFileSize = metadata && "fileSize" in metadata
+    ? metadata.fileSize
+    : undefined;
+
+  const metadataUploadedAt = metadata?.uploadedAt || (metadata as MediaResult | null)?.processedAt;
+
+  const metadataStatus = (metadata as MediaResult | null)?.status || status;
 
   return (
     <Card className="rounded-2xl border-white/10 bg-[#0d131c] text-white shadow-2xl shadow-black/20">
@@ -51,11 +67,11 @@ export function MetadataCard({
       <CardContent>
         <dl className="space-y-4 text-sm">
           <MetadataRow label="File ID" value={metadata?.fileId || "—"} />
-          <MetadataRow label="S3 Object Key" value={metadata?.key || "—"} />
-          <MetadataRow label="Original File Name" value={metadata?.fileName || fileName || "—"} />
-          <MetadataRow label="File Size" value={metadata ? formatBytes(metadata.fileSize) : formatBytes(fileSize)} />
-          <MetadataRow label="Uploaded At" value={formatTime(metadata?.uploadedAt)} />
-          <MetadataRow label="Status" value={status} badge />
+          <MetadataRow label="S3 Object Key" value={metadataKey || "—"} />
+          <MetadataRow label="Original File Name" value={metadataFileName || fileName || "—"} />
+          <MetadataRow label="File Size" value={formatBytes(metadataFileSize ?? fileSize)} />
+          <MetadataRow label="Uploaded At" value={formatTime(metadataUploadedAt)} />
+          <MetadataRow label="Status" value={metadataStatus} badge />
         </dl>
       </CardContent>
     </Card>

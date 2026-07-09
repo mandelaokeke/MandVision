@@ -1,3 +1,5 @@
+"use client";
+
 import { Clock3, Images, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { MediaResult } from "@/hooks/useUpload";
@@ -13,7 +15,15 @@ function formatDate(value?: string) {
   }).format(new Date(value));
 }
 
-export function HistoryCard({ items }: { items: MediaResult[] }) {
+export function HistoryCard({
+  items,
+  selectedFileId,
+  onSelectItem,
+}: {
+  items: MediaResult[];
+  selectedFileId?: string;
+  onSelectItem: (item: MediaResult) => void;
+}) {
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredItems = useMemo(() => {
@@ -59,11 +69,18 @@ export function HistoryCard({ items }: { items: MediaResult[] }) {
         {filteredItems.length > 0 ? (
           filteredItems.map((item) => {
             const topLabels = item.labels?.slice(0, 3) || [];
+            const isSelected = item.fileId === selectedFileId;
 
             return (
-              <div
+              <button
+                type="button"
                 key={item.fileId}
-                className="rounded-xl border border-white/10 bg-black/20 p-4 transition hover:border-emerald-400/30 hover:bg-emerald-400/[0.03]"
+                onClick={() => onSelectItem(item)}
+                className={`w-full rounded-xl border p-4 text-left transition hover:border-emerald-400/30 hover:bg-emerald-400/[0.03] ${
+                  isSelected
+                    ? "border-emerald-400/50 bg-emerald-400/[0.06]"
+                    : "border-white/10 bg-black/20"
+                }`}
               >
                 <div className="mb-3 flex items-start justify-between gap-4">
                   <div className="min-w-0">
@@ -95,7 +112,7 @@ export function HistoryCard({ items }: { items: MediaResult[] }) {
                     <span className="text-xs text-slate-500">No labels available</span>
                   )}
                 </div>
-              </div>
+              </button>
             );
           })
         ) : (

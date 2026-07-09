@@ -32,6 +32,7 @@ export type MediaResult = {
   uploadedAt?: string;
   processedAt?: string;
   labels?: MediaLabel[];
+  fileSize?: number;
 };
 
 type WebSocketMessage = {
@@ -209,6 +210,26 @@ export function useUpload() {
       setUploading(false);
     }
   }
+  const [selectedHistoryItem, setSelectedHistoryItem] =
+    useState<MediaResult | null>(null);
+
+  function selectHistoryItem(item: MediaResult) {
+    activeFileIdRef.current = item.fileId;
+    setResult(item);
+    setMetadata({
+      fileId: item.fileId,
+      key: item.objectKey || "",
+      fileName: item.originalFileName || item.fileId,
+      fileSize: item.fileSize || 0,
+      uploadedAt: item.uploadedAt || item.processedAt || new Date().toISOString(),
+    });
+    setStage(item.status === "PROCESSED" ? "complete" : "processing");
+    setStatus(
+      item.status === "PROCESSED"
+        ? "Loaded previous processed result from upload history."
+        : "Loaded previous upload from history. Processing may still be pending."
+    );
+  }
 
   async function fetchHistory() {
     try {
@@ -273,6 +294,9 @@ export function useUpload() {
     handleFileChange,
     handleUpload,
     fetchHistory,
+    selectHistoryItem,
+    selectedHistoryItem,
+    setSelectedHistoryItem,
   };
 }
 

@@ -9,12 +9,14 @@ export function PreviewCard({
   stage,
   progressLabel,
   uploadedAt,
+  historicalSelected = false,
 }: {
   fileName?: string;
   previewUrl: string | null;
   stage: UploadStage;
   progressLabel: string;
   uploadedAt?: string;
+  historicalSelected?: boolean;
 }) {
   return (
     <Card className="rounded-2xl border-white/10 bg-[#0d131c] text-white shadow-2xl shadow-black/20">
@@ -33,8 +35,15 @@ export function PreviewCard({
             <img
               src={previewUrl}
               alt="Selected upload preview"
-              className="h-80 w-full object-cover"
+              className="h-80 w-full object-contain bg-black/40"
             />
+          ) : historicalSelected ? (
+            <div className="flex h-80 flex-col items-center justify-center px-8 text-center text-slate-400">
+              <p className="font-semibold text-slate-200">Historical upload selected</p>
+              <p className="mt-2 text-sm text-slate-500">
+                Preview image is unavailable. Metadata and Rekognition results have been loaded from history.
+              </p>
+            </div>
           ) : (
             <div className="flex h-80 items-center justify-center text-slate-500">
               Image preview will appear here
