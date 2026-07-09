@@ -34,6 +34,7 @@ export type MediaResult = {
   processedAt?: string;
   labels?: MediaLabel[];
   fileSize?: number;
+  errorMessage?: string;
 };
 
 type WebSocketMessage = {
@@ -56,6 +57,7 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
   const [uploading, setUploading] = useState(false);
   const [fetchingPreview, setFetchingPreview] = useState(false);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
+  const [reprocessingFileId, setReprocessingFileId] = useState<string | null>(null);
   const [favoriteFileIds, setFavoriteFileIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
 
@@ -297,10 +299,12 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
       fileSize: item.fileSize || 0,
       uploadedAt: item.uploadedAt || item.processedAt || new Date().toISOString(),
     });
-    setStage(item.status === "PROCESSED" ? "complete" : "processing");
+    setStage(item.status === "PROCESSED" ? "complete" : item.status === "FAILED" ? "error" : "processing");
     setStatus(
       item.status === "PROCESSED"
         ? "Loaded previous processed result from upload history. Fetching preview image..."
+        : item.status === "FAILED"
+        ? item.errorMessage || "This upload could not be processed."
         : "Loaded previous upload from history. Processing may still be pending."
     );
 
@@ -429,6 +433,62 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
     }
   }
 
+  async function reprocessMediaItem(item: MediaResult) {
+    const displayName = item.originalFileName || item.fileId;
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+      if (!apiUrl) {
+        throw new Error("NEXT_PUBLIC_API_URL is not configured.");
+      }
+
+      setReprocessingFileId(item.fileId);
+      setStatus(`Reprocessing ${displayName}...`);
+
+      const response = await fetch(`${apiUrl}/media/${item.fileId}/reprocess`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Could not reprocess media item");
+      }
+
+      const mediaResult = (await response.json()) as MediaResult;
+
+      setHistory((currentHistory) =>
+        upsertHistoryItem(
+          currentHistory.filter((historyItem) => historyItem.fileId !== item.fileId),
+          mediaResult
+        )
+      );
+      setResult(mediaResult);
+      setSelectedHistoryItem(mediaResult);
+      activeFileIdRef.current = mediaResult.fileId;
+
+      if (mediaResult.status === "PROCESSED") {
+        setStage("complete");
+        setStatus("Reprocessing complete. Rekognition labels are ready.");
+        return;
+      }
+
+      if (mediaResult.status === "FAILED") {
+        setStage("error");
+        setStatus(mediaResult.errorMessage || "This upload could not be reprocessed.");
+        return;
+      }
+
+      setStage("processing");
+      setStatus("Reprocess request was accepted.");
+    } catch (error) {
+      console.error("Could not reprocess media item", error);
+      setStage("error");
+      setStatus("Could not reprocess this image. Please try again.");
+    } finally {
+      setReprocessingFileId(null);
+    }
+  }
+
   async function pollForResults(fileId: string) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
@@ -451,6 +511,12 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
         if (mediaResult.status === "PROCESSED") {
           setStage("complete");
           setStatus("Processing complete. Rekognition labels are ready.");
+          return;
+        }
+
+        if (mediaResult.status === "FAILED") {
+          setStage("error");
+          setStatus(mediaResult.errorMessage || "This upload could not be processed.");
           return;
         }
       }
@@ -486,11 +552,13 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
     uploading,
     fetchingPreview,
     deletingFileId,
+    reprocessingFileId,
     favoriteFileIds,
     progressLabel,
     handleFileChange,
     handleUpload,
     deleteMediaItem,
+    reprocessMediaItem,
     toggleFavoriteItem,
     fetchHistory,
     fetchPreviewUrl,

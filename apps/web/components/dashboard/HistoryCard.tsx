@@ -36,6 +36,8 @@ export function HistoryCard({
   onSelectItem,
   onDeleteItem,
   deletingFileId,
+  onReprocessItem,
+  reprocessingFileId,
   favoriteFileIds,
   onToggleFavorite,
   filterTerm,
@@ -46,6 +48,8 @@ export function HistoryCard({
   onSelectItem: (item: MediaResult) => void;
   onDeleteItem?: (item: MediaResult) => void;
   deletingFileId?: string | null;
+  onReprocessItem?: (item: MediaResult) => void;
+  reprocessingFileId?: string | null;
   favoriteFileIds?: string[];
   onToggleFavorite?: (item: MediaResult) => void;
   filterTerm: string;
@@ -312,9 +316,11 @@ export function HistoryCard({
                     selected={item.fileId === selectedFileId}
                     favorite={favoriteSet.has(item.fileId)}
                     deleting={deletingFileId === item.fileId}
+                    reprocessing={reprocessingFileId === item.fileId}
                     onSelectItem={onSelectItem}
                     onToggleFavorite={onToggleFavorite}
                     onDeleteItem={onDeleteItem}
+                    onReprocessItem={onReprocessItem}
                   />
                 ))}
               </div>
@@ -327,9 +333,11 @@ export function HistoryCard({
                     selected={item.fileId === selectedFileId}
                     favorite={favoriteSet.has(item.fileId)}
                     deleting={deletingFileId === item.fileId}
+                    reprocessing={reprocessingFileId === item.fileId}
                     onSelectItem={onSelectItem}
                     onToggleFavorite={onToggleFavorite}
                     onDeleteItem={onDeleteItem}
+                    onReprocessItem={onReprocessItem}
                   />
                 ))}
               </div>
@@ -388,17 +396,21 @@ function HistoryListItem({
   selected,
   favorite,
   deleting,
+  reprocessing,
   onSelectItem,
   onToggleFavorite,
   onDeleteItem,
+  onReprocessItem,
 }: {
   item: MediaResult;
   selected: boolean;
   favorite: boolean;
   deleting: boolean;
+  reprocessing: boolean;
   onSelectItem: (item: MediaResult) => void;
   onToggleFavorite?: (item: MediaResult) => void;
   onDeleteItem?: (item: MediaResult) => void;
+  onReprocessItem?: (item: MediaResult) => void;
 }) {
   const topLabels = item.labels?.slice(0, 3) || [];
 
@@ -436,8 +448,10 @@ function HistoryListItem({
         item={item}
         favorite={favorite}
         deleting={deleting}
+        reprocessing={reprocessing}
         onToggleFavorite={onToggleFavorite}
         onDeleteItem={onDeleteItem}
+        onReprocessItem={onReprocessItem}
       />
     </div>
   );
@@ -448,17 +462,21 @@ function HistoryGalleryItem({
   selected,
   favorite,
   deleting,
+  reprocessing,
   onSelectItem,
   onToggleFavorite,
   onDeleteItem,
+  onReprocessItem,
 }: {
   item: MediaResult;
   selected: boolean;
   favorite: boolean;
   deleting: boolean;
+  reprocessing: boolean;
   onSelectItem: (item: MediaResult) => void;
   onToggleFavorite?: (item: MediaResult) => void;
   onDeleteItem?: (item: MediaResult) => void;
+  onReprocessItem?: (item: MediaResult) => void;
 }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -556,8 +574,10 @@ function HistoryGalleryItem({
           item={item}
           favorite={favorite}
           deleting={deleting}
+          reprocessing={reprocessing}
           onToggleFavorite={onToggleFavorite}
           onDeleteItem={onDeleteItem}
+          onReprocessItem={onReprocessItem}
           horizontal
         />
       </div>
@@ -594,19 +614,39 @@ function HistoryItemActions({
   item,
   favorite,
   deleting,
+  reprocessing,
   onToggleFavorite,
   onDeleteItem,
+  onReprocessItem,
   horizontal = false,
 }: {
   item: MediaResult;
   favorite: boolean;
   deleting: boolean;
+  reprocessing: boolean;
   onToggleFavorite?: (item: MediaResult) => void;
   onDeleteItem?: (item: MediaResult) => void;
+  onReprocessItem?: (item: MediaResult) => void;
   horizontal?: boolean;
 }) {
+  const canReprocess = item.status !== "PROCESSED";
+
   return (
     <div className={horizontal ? "flex flex-1 gap-2" : "flex w-11 shrink-0 flex-col gap-2"}>
+      {onReprocessItem && canReprocess ? (
+        <button
+          type="button"
+          aria-label={`Reprocess ${item.originalFileName || item.fileId}`}
+          disabled={reprocessing}
+          onClick={() => onReprocessItem(item)}
+          className={`flex h-11 items-center justify-center rounded-lg border border-emerald-400/20 text-emerald-300 transition hover:border-emerald-400/50 hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50 ${
+            horizontal ? "flex-1" : ""
+          }`}
+        >
+          <RotateCcw className={`h-4 w-4 ${reprocessing ? "animate-spin" : ""}`} />
+        </button>
+      ) : null}
+
       {onToggleFavorite ? (
         <button
           type="button"

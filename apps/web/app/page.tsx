@@ -92,6 +92,8 @@ export default function Home() {
             onSelectItem={upload.selectHistoryItem}
             onDeleteItem={upload.deleteMediaItem}
             deletingFileId={upload.deletingFileId}
+            onReprocessItem={upload.reprocessMediaItem}
+            reprocessingFileId={upload.reprocessingFileId}
             favoriteFileIds={upload.favoriteFileIds}
             onToggleFavorite={upload.toggleFavoriteItem}
             filterTerm={historyFilter}
@@ -128,6 +130,11 @@ export default function Home() {
         onDelete={upload.deleteMediaItem}
         deleting={
           upload.deletingFileId ===
+          visibleActiveItem?.fileId
+        }
+        onReprocess={upload.reprocessMediaItem}
+        reprocessing={
+          upload.reprocessingFileId ===
           visibleActiveItem?.fileId
         }
         favorite={upload.favoriteFileIds.includes(

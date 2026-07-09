@@ -7,6 +7,7 @@ import * as lambdaNodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as s3Notifications from "aws-cdk-lib/aws-s3-notifications";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as iam from "aws-cdk-lib/aws-iam";
 
 interface StorageStackProps extends cdk.StackProps {
   metadataTable: dynamodb.Table;
@@ -78,6 +79,12 @@ export class StorageStack extends cdk.Stack {
     this.ingestBucket.grantRead(processorLambda);
     this.processedBucket.grantWrite(processorLambda);
     props.metadataTable.grantWriteData(processorLambda);
+    processorLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["rekognition:DetectLabels"],
+        resources: ["*"],
+      })
+    );
 
     processorLambda.addEventSource(
       new lambdaEventSources.SqsEventSource(processingQueue, {

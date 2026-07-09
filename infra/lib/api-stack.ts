@@ -5,6 +5,7 @@ import * as lambdaNodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as iam from "aws-cdk-lib/aws-iam";
 
 interface ApiStackProps extends cdk.StackProps {
   ingestBucket: s3.Bucket;
@@ -81,6 +82,20 @@ export class ApiStack extends cdk.Stack {
       }
     );
 
+    const reprocessMediaLambda = new lambdaNodejs.NodejsFunction(
+      this,
+      "ReprocessMediaLambda",
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        entry: "../services/reprocess-media/src/handler.ts",
+        handler: "main",
+        timeout: cdk.Duration.seconds(30),
+        environment: {
+          METADATA_TABLE_NAME: props.metadataTable.tableName,
+        },
+      }
+    );
+
     props.ingestBucket.grantPut(presignLambda);
     props.metadataTable.grantReadData(getMediaLambda);
     props.metadataTable.grantReadData(listMediaLambda);
@@ -89,6 +104,14 @@ export class ApiStack extends cdk.Stack {
     props.metadataTable.grantReadWriteData(deleteMediaLambda);
     props.ingestBucket.grantDelete(deleteMediaLambda);
     props.processedBucket.grantDelete(deleteMediaLambda);
+    props.metadataTable.grantReadWriteData(reprocessMediaLambda);
+    props.ingestBucket.grantRead(reprocessMediaLambda);
+    reprocessMediaLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["rekognition:DetectLabels"],
+        resources: ["*"],
+      })
+    );
 
     const api = new apigateway.RestApi(this, "MediaPipelineApi", {
       restApiName: "mand-image-processing-api",
@@ -109,6 +132,12 @@ export class ApiStack extends cdk.Stack {
     mediaItem.addMethod(
       "DELETE",
       new apigateway.LambdaIntegration(deleteMediaLambda)
+    );
+
+    const reprocess = mediaItem.addResource("reprocess");
+    reprocess.addMethod(
+      "POST",
+      new apigateway.LambdaIntegration(reprocessMediaLambda)
     );
 
     const previewUrl = mediaItem.addResource("preview-url");

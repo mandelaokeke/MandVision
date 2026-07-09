@@ -2,7 +2,7 @@
 
 "use client";
 
-import { X, Copy, ImageIcon, Star, Trash2 } from "lucide-react";
+import { X, Copy, ImageIcon, RotateCcw, Star, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { MediaResult } from "@/hooks/useUpload";
@@ -13,6 +13,8 @@ interface ImageDetailsModalProps {
   onClose: () => void;
   onDelete?: (item: MediaResult) => void;
   deleting?: boolean;
+  onReprocess?: (item: MediaResult) => void;
+  reprocessing?: boolean;
   favorite?: boolean;
   onToggleFavorite?: (item: MediaResult) => void;
 }
@@ -23,6 +25,8 @@ export function ImageDetailsModal({
   onClose,
   onDelete,
   deleting = false,
+  onReprocess,
+  reprocessing = false,
   favorite = false,
   onToggleFavorite,
 }: ImageDetailsModalProps) {
@@ -72,6 +76,17 @@ export function ImageDetailsModal({
           </div>
 
           <div className="flex justify-end gap-3">
+            {onReprocess && item.status !== "PROCESSED" ? (
+              <button
+                type="button"
+                onClick={() => onReprocess(item)}
+                disabled={reprocessing}
+                className="inline-flex items-center gap-2 rounded-lg border border-emerald-400/30 px-4 py-2 text-emerald-300 hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RotateCcw className={`h-4 w-4 ${reprocessing ? "animate-spin" : ""}`} />
+                {reprocessing ? "Reprocessing..." : "Reprocess"}
+              </button>
+            ) : null}
             {onToggleFavorite ? (
               <button
                 type="button"
