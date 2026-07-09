@@ -27,7 +27,7 @@ export default function Home() {
 
           <PreviewCard
             fileName={upload.file?.name}
-            previewUrl={upload.selectedHistoryItem ? null : upload.previewUrl}
+            previewUrl={upload.previewUrl}
             stage={upload.stage}
             progressLabel={upload.progressLabel}
             uploadedAt={upload.metadata?.uploadedAt}

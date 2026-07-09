@@ -120,6 +120,8 @@ export function useUpload() {
     setFile(selectedFile);
     setMetadata(null);
     setResult(null);
+    setSelectedHistoryItem(null);
+
     activeFileIdRef.current = null;
 
     if (!selectedFile) {
@@ -177,6 +179,7 @@ export function useUpload() {
 
       const { uploadUrl, fileId, key } = await presignResponse.json();
       activeFileIdRef.current = fileId;
+      setSelectedHistoryItem(null);
 
       setStatus("Uploading image directly to S3...");
 
@@ -213,8 +216,9 @@ export function useUpload() {
   const [selectedHistoryItem, setSelectedHistoryItem] =
     useState<MediaResult | null>(null);
 
-  function selectHistoryItem(item: MediaResult) {
+  async function selectHistoryItem(item: MediaResult) {
     activeFileIdRef.current = item.fileId;
+    setSelectedHistoryItem(item);
     setResult(item);
     setMetadata({
       fileId: item.fileId,
@@ -226,9 +230,38 @@ export function useUpload() {
     setStage(item.status === "PROCESSED" ? "complete" : "processing");
     setStatus(
       item.status === "PROCESSED"
-        ? "Loaded previous processed result from upload history."
+        ? "Loaded previous processed result from upload history. Fetching preview image..."
         : "Loaded previous upload from history. Processing may still be pending."
     );
+
+    await fetchPreviewUrl(item.fileId);
+  }
+
+  async function fetchPreviewUrl(fileId: string) {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+      if (!apiUrl) return;
+
+      const response = await fetch(`${apiUrl}/media/${fileId}/preview-url`);
+
+      if (!response.ok) {
+        setPreviewUrl(null);
+        setStatus("Loaded history item, but preview image could not be loaded.");
+        return;
+      }
+
+      const data = (await response.json()) as { previewUrl?: string };
+
+      if (data.previewUrl) {
+        setPreviewUrl(data.previewUrl);
+        setStatus("Loaded previous processed result and preview image from history.");
+      }
+    } catch (error) {
+      console.error("Could not fetch preview URL", error);
+      setPreviewUrl(null);
+      setStatus("Loaded history item, but preview image could not be loaded.");
+    }
   }
 
   async function fetchHistory() {
@@ -294,6 +327,7 @@ export function useUpload() {
     handleFileChange,
     handleUpload,
     fetchHistory,
+    fetchPreviewUrl,
     selectHistoryItem,
     selectedHistoryItem,
     setSelectedHistoryItem,
