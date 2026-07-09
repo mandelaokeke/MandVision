@@ -25,6 +25,7 @@ export type MediaLabel = {
 
 export type MediaResult = {
   fileId: string;
+  ownerUserId?: string;
   bucket?: string;
   objectKey?: string;
   originalFileName?: string;
@@ -40,15 +41,58 @@ type WebSocketMessage = {
   payload?: MediaResult;
 };
 
-export function useUpload() {
+const FAVORITES_STORAGE_KEY = "mandvision.favoriteFileIds";
+const MEDIA_OWNERS_STORAGE_KEY = "mandvision.mediaOwners";
+
+export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [stage, setStage] = useState<UploadStage>("idle");
   const [status, setStatus] = useState("Choose a JPG or PNG image to begin.");
   const [metadata, setMetadata] = useState<UploadMetadata | null>(null);
   const [result, setResult] = useState<MediaResult | null>(null);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<MediaResult | null>(null);
   const [history, setHistory] = useState<MediaResult[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [fetchingPreview, setFetchingPreview] = useState(false);
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
+  const [favoriteFileIds, setFavoriteFileIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+
+    try {
+      const storedFavorites = window.localStorage.getItem(FAVORITES_STORAGE_KEY);
+      const parsedFavorites = storedFavorites ? JSON.parse(storedFavorites) : [];
+
+      if (!Array.isArray(parsedFavorites)) return [];
+
+      return parsedFavorites.filter((fileId): fileId is string => typeof fileId === "string");
+    } catch (error) {
+      console.error("Could not load favorite images", error);
+      return [];
+    }
+  });
+  const [mediaOwners, setMediaOwners] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
+
+    try {
+      const storedOwners = window.localStorage.getItem(MEDIA_OWNERS_STORAGE_KEY);
+      const parsedOwners = storedOwners ? JSON.parse(storedOwners) : {};
+
+      if (!parsedOwners || typeof parsedOwners !== "object" || Array.isArray(parsedOwners)) {
+        return {};
+      }
+
+      return Object.fromEntries(
+        Object.entries(parsedOwners).filter(
+          (entry): entry is [string, string] =>
+            typeof entry[0] === "string" && typeof entry[1] === "string"
+        )
+      );
+    } catch (error) {
+      console.error("Could not load media ownership", error);
+      return {};
+    }
+  });
   const activeFileIdRef = useRef<string | null>(null);
 
   const progressLabel = useMemo(() => {
@@ -63,6 +107,22 @@ export function useUpload() {
   useEffect(() => {
     void fetchHistory();
   }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favoriteFileIds));
+    } catch (error) {
+      console.error("Could not save favorite images", error);
+    }
+  }, [favoriteFileIds]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(MEDIA_OWNERS_STORAGE_KEY, JSON.stringify(mediaOwners));
+    } catch (error) {
+      console.error("Could not save media ownership", error);
+    }
+  }, [mediaOwners]);
 
   useEffect(() => {
     const websocketUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
@@ -120,6 +180,7 @@ export function useUpload() {
     setFile(selectedFile);
     setMetadata(null);
     setResult(null);
+    setFetchingPreview(false);
     setSelectedHistoryItem(null);
 
     activeFileIdRef.current = null;
@@ -172,6 +233,7 @@ export function useUpload() {
         body: JSON.stringify({
           fileName: file.name,
           fileType: file.type,
+          ownerUserId,
         }),
       });
 
@@ -180,6 +242,14 @@ export function useUpload() {
       const { uploadUrl, fileId, key } = await presignResponse.json();
       activeFileIdRef.current = fileId;
       setSelectedHistoryItem(null);
+      setFetchingPreview(false);
+
+      if (ownerUserId) {
+        setMediaOwners((currentOwners) => ({
+          ...currentOwners,
+          [fileId]: ownerUserId,
+        }));
+      }
 
       setStatus("Uploading image directly to S3...");
 
@@ -213,12 +283,12 @@ export function useUpload() {
       setUploading(false);
     }
   }
-  const [selectedHistoryItem, setSelectedHistoryItem] =
-    useState<MediaResult | null>(null);
 
   async function selectHistoryItem(item: MediaResult) {
     activeFileIdRef.current = item.fileId;
     setSelectedHistoryItem(item);
+    setPreviewUrl(null);
+    setFetchingPreview(true);
     setResult(item);
     setMetadata({
       fileId: item.fileId,
@@ -241,12 +311,16 @@ export function useUpload() {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-      if (!apiUrl) return;
+      if (!apiUrl) {
+        setFetchingPreview(false);
+        return;
+      }
 
       const response = await fetch(`${apiUrl}/media/${fileId}/preview-url`);
 
       if (!response.ok) {
         setPreviewUrl(null);
+        setFetchingPreview(false);
         setStatus("Loaded history item, but preview image could not be loaded.");
         return;
       }
@@ -255,11 +329,17 @@ export function useUpload() {
 
       if (data.previewUrl) {
         setPreviewUrl(data.previewUrl);
+        setFetchingPreview(false);
         setStatus("Loaded previous processed result and preview image from history.");
+      }
+
+      if (!data.previewUrl) {
+        setFetchingPreview(false);
       }
     } catch (error) {
       console.error("Could not fetch preview URL", error);
       setPreviewUrl(null);
+      setFetchingPreview(false);
       setStatus("Loaded history item, but preview image could not be loaded.");
     }
   }
@@ -278,6 +358,74 @@ export function useUpload() {
       setHistory(data.items || []);
     } catch (error) {
       console.error("Could not fetch upload history", error);
+    }
+  }
+
+  async function deleteMediaItem(item: MediaResult) {
+    const displayName = item.originalFileName || item.fileId;
+    const confirmed = window.confirm(
+      `Delete ${displayName}? This removes the image from storage and history.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+      if (!apiUrl) {
+        throw new Error("NEXT_PUBLIC_API_URL is not configured.");
+      }
+
+      setDeletingFileId(item.fileId);
+      setStatus(`Deleting ${displayName}...`);
+
+      const response = await fetch(`${apiUrl}/media/${item.fileId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Could not delete media item");
+      }
+
+      setHistory((currentHistory) =>
+        currentHistory.filter((historyItem) => historyItem.fileId !== item.fileId)
+      );
+      setMediaOwners((currentOwners) => {
+        const nextOwners = { ...currentOwners };
+        delete nextOwners[item.fileId];
+        return nextOwners;
+      });
+      setFavoriteFileIds((currentFavorites) =>
+        currentFavorites.filter((fileId) => fileId !== item.fileId)
+      );
+
+      const isActiveItem =
+        selectedHistoryItem?.fileId === item.fileId ||
+        result?.fileId === item.fileId ||
+        metadata?.fileId === item.fileId ||
+        activeFileIdRef.current === item.fileId;
+
+      if (isActiveItem) {
+        activeFileIdRef.current = null;
+        setSelectedHistoryItem(null);
+        setResult(null);
+        setMetadata(null);
+        setPreviewUrl(null);
+        setFetchingPreview(false);
+        setStage("idle");
+      }
+
+      setStatus(`${displayName} was deleted from MandVision.`);
+    } catch (error) {
+      console.error("Could not delete media item", error);
+      setStage("error");
+      setStatus(
+        error instanceof TypeError
+          ? "Delete is not available on the deployed API yet. Deploy MandImageApiStack, then try again."
+          : "Could not delete this image. Please try again."
+      );
+    } finally {
+      setDeletingFileId(null);
     }
   }
 
@@ -314,6 +462,18 @@ export function useUpload() {
     setStatus("Still processing. Refresh or upload another image in a moment.");
   }
 
+  function toggleFavoriteItem(item: MediaResult) {
+    setFavoriteFileIds((currentFavorites) => {
+      if (currentFavorites.includes(item.fileId)) {
+        setStatus(`${item.originalFileName || item.fileId} removed from favorites.`);
+        return currentFavorites.filter((fileId) => fileId !== item.fileId);
+      }
+
+      setStatus(`${item.originalFileName || item.fileId} added to favorites.`);
+      return [item.fileId, ...currentFavorites];
+    });
+  }
+
   return {
     file,
     previewUrl,
@@ -322,10 +482,16 @@ export function useUpload() {
     metadata,
     result,
     history,
+    mediaOwners,
     uploading,
+    fetchingPreview,
+    deletingFileId,
+    favoriteFileIds,
     progressLabel,
     handleFileChange,
     handleUpload,
+    deleteMediaItem,
+    toggleFavoriteItem,
     fetchHistory,
     fetchPreviewUrl,
     selectHistoryItem,

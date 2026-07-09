@@ -23,4 +23,6 @@ const storageStack = new StorageStack(app, "MandImageStorageStack", {
 new ApiStack(app, "MandImageApiStack", {
   env,
   ingestBucket: storageStack.ingestBucket,
+  processedBucket: storageStack.processedBucket,
+  metadataTable: databaseStack.metadataTable,
 });

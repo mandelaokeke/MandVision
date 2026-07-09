@@ -10,6 +10,7 @@ export function PreviewCard({
   progressLabel,
   uploadedAt,
   historicalSelected = false,
+  previewLoading = false,
 }: {
   fileName?: string;
   previewUrl: string | null;
@@ -17,6 +18,7 @@ export function PreviewCard({
   progressLabel: string;
   uploadedAt?: string;
   historicalSelected?: boolean;
+  previewLoading?: boolean;
 }) {
   return (
     <Card className="rounded-2xl border-white/10 bg-[#0d131c] text-white shadow-2xl shadow-black/20">
@@ -39,9 +41,13 @@ export function PreviewCard({
             />
           ) : historicalSelected ? (
             <div className="flex h-80 flex-col items-center justify-center px-8 text-center text-slate-400">
-              <p className="font-semibold text-slate-200">Historical upload selected</p>
+              <p className="font-semibold text-slate-200">
+                {previewLoading ? "Loading historical preview..." : "Historical upload selected"}
+              </p>
               <p className="mt-2 text-sm text-slate-500">
-                Preview image is unavailable. Metadata and Rekognition results have been loaded from history.
+                {previewLoading
+                  ? "Fetching a secure S3 preview URL for this image."
+                  : "Preview image is unavailable. Metadata and Rekognition results have been loaded from history."}
               </p>
             </div>
           ) : (

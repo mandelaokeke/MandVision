@@ -25,8 +25,11 @@ export function DashboardHeader() {
         </div>
 
         <Button
+          type="button"
           variant="outline"
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent("mandvision:new-upload"));
+          }}
           className="border-emerald-400/40 bg-transparent text-emerald-300 hover:bg-emerald-400/10 hover:text-emerald-200"
         >
           <Upload className="mr-2 h-4 w-4" />

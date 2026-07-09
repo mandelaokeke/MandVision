@@ -20,24 +20,26 @@ export function ResultsCard({ result }: { result: MediaResult | null }) {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-5">
+      <CardContent>
         {labels.length > 0 ? (
-          labels.slice(0, 10).map((label) => {
-            const confidence = Math.round(label.confidence || 0);
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {labels.slice(0, 12).map((label) => {
+              const confidence = Math.round(label.confidence || 0);
 
-            return (
-              <div
-                key={`${label.name}-${label.confidence}`}
-                className="rounded-xl border border-white/10 bg-black/20 p-4"
-              >
-                <div className="mb-3 flex items-center justify-between text-sm">
-                  <span className="font-semibold text-slate-200">{label.name}</span>
-                  <span className="text-emerald-300">{confidence}%</span>
+              return (
+                <div
+                  key={`${label.name}-${label.confidence}`}
+                  className="rounded-xl border border-white/10 bg-black/20 p-4 transition hover:border-emerald-400/30"
+                >
+                  <div className="mb-3 flex items-center justify-between text-sm">
+                    <span className="truncate font-semibold text-slate-200">{label.name}</span>
+                    <span className="ml-3 shrink-0 text-emerald-300">{confidence}%</span>
+                  </div>
+                  <Progress value={confidence} className="h-2 bg-slate-800" />
                 </div>
-                <Progress value={confidence} className="h-2 bg-slate-800" />
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         ) : (
           <div className="rounded-xl border border-white/10 bg-black/20 p-5 text-sm text-slate-400">
             Upload an image to view Rekognition labels here.
