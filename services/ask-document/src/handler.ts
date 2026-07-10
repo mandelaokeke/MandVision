@@ -1,6 +1,6 @@
 import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 
 declare const process: {
   env: {
@@ -71,7 +71,7 @@ export const main = async (event: any) => {
       ? await getDocumentsByIds(body.fileIds)
       : body.fileId
       ? await getSingleDocument(body.fileId)
-      : await listDocuments();
+      : [];
 
     if (!documents.length) {
       return response(200, {
@@ -126,21 +126,6 @@ async function getSingleDocument(fileId: string) {
   const item = result.Item as MediaItem | undefined;
 
   return item && isSearchableDocument(item) ? [item] : [];
-}
-
-async function listDocuments() {
-  const result = await docClient.send(
-    new ScanCommand({
-      TableName: process.env.METADATA_TABLE_NAME!,
-      FilterExpression: "mediaType = :document",
-      ExpressionAttributeValues: {
-        ":document": "document",
-      },
-      Limit: 100,
-    })
-  );
-
-  return ((result.Items || []) as MediaItem[]).filter(isSearchableDocument);
 }
 
 function isSearchableDocument(item: MediaItem) {

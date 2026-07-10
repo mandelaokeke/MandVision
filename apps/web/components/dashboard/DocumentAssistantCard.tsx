@@ -142,6 +142,11 @@ export function DocumentAssistantCard({
   }
 
   async function askBackend(nextQuestion: string, scopedDocuments: MediaResult[]) {
+    if (!scopedDocuments.length) {
+      addAssistantMessage(buildAnswer(nextQuestion, [], true));
+      return;
+    }
+
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       if (!apiUrl) {
