@@ -494,7 +494,13 @@ function buildAppAnswer(question: string): AssistantAnswer | null {
     );
   }
 
-  if (/\b(upload|file|image|pdf|doc|docx|process|processing)\b/.test(normalized)) {
+  if (/\b(image|images|picture|pictures|photo|photos|jpg|jpeg|png|scan pictures|scan photos|scan images|rekognition|label|labels|object|objects)\b/.test(normalized)) {
+    return makeAnswer(
+      "Yes. MandVision can scan JPG and PNG images with Amazon Rekognition, then show detected labels, confidence scores, image previews, analytics, and history in your Library. VisoAI is strongest with extracted document text, but the app still analyzes images separately."
+    );
+  }
+
+  if (/\b(upload|uploads|file|files|pdf|pdfs|doc|docs|docx|process|processing|scan|extract|extraction)\b/.test(normalized)) {
     return makeAnswer(
       "Use Upload to add JPG, PNG, PDF, DOC, or DOCX files. MandVision stores the file, processes it, then adds searchable results to your Library once processing is complete."
     );
@@ -606,7 +612,7 @@ function summarizeAnswer(
     if (friendlyFallback) {
       return documentCount
         ? `I did not find a strong match for "${question}" in the processed documents, but you can ask me to summarize a specific file, compare two document names, or search for dates, emails, IDs, and amounts. How can I help you narrow it down?`
-        : "I can chat with you and explain MandVision now. Once you upload and process PDFs or Word documents, I can also summarize, compare, and answer questions about them. How can I help you today?";
+        : noDocumentAnswer(question);
     }
 
     return `I could not find a match for "${question}" in the extracted documents.`;
@@ -619,6 +625,20 @@ function summarizeAnswer(
   }
 
   return `I found ${matches.length} document${matches.length === 1 ? "" : "s"} that match "${question}".`;
+}
+
+function noDocumentAnswer(question: string) {
+  const normalized = question.toLowerCase();
+
+  if (/\b(image|images|picture|pictures|photo|photos|jpg|jpeg|png|rekognition|label|labels|object|objects)\b/.test(normalized)) {
+    return "Yes. MandVision can scan images too. Upload a JPG or PNG and it will detect objects and labels with confidence scores, then add the results to your dashboard and Library. I only need processed documents when you want me to answer from extracted text.";
+  }
+
+  if (/\b(pdf|pdfs|doc|docs|docx|document|documents|extract|summary|summarize|compare)\b/.test(normalized)) {
+    return "I can help with documents after you upload and process a PDF, DOC, or DOCX in this account. Right now I don’t have any readable documents for your user, so I can explain the workflow but I won’t reference files that are not yours.";
+  }
+
+  return "I can chat with you and explain MandVision now. Once you upload and process images or documents in this account, I can help with labels, summaries, comparisons, and searches. How can I help you today?";
 }
 
 function getSearchTerms(question: string) {
