@@ -2,7 +2,9 @@
 
 "use client";
 
-import { X, Copy, ImageIcon, RotateCcw, Star, Trash2 } from "lucide-react";
+import { X, Copy, FileText, ImageIcon, RotateCcw, Star, Trash2 } from "lucide-react";
+import { DocumentInsightsPanel } from "@/components/dashboard/DocumentInsightsPanel";
+import { DocumentTextPanel } from "@/components/dashboard/DocumentTextPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { MediaResult } from "@/hooks/useUpload";
@@ -39,12 +41,14 @@ export function ImageDetailsModal({
       console.error("Failed to copy file ID", e);
     }
   };
+  const isDocument = item.mediaType === "document";
+  const PreviewIcon = isDocument ? FileText : ImageIcon;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6">
       <Card className="w-full max-w-3xl rounded-2xl border-white/10 bg-[#0d131c] text-white">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Image Details</CardTitle>
+          <CardTitle>File Details</CardTitle>
           <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-white/10">
             <X className="h-5 w-5" />
           </button>
@@ -52,18 +56,31 @@ export function ImageDetailsModal({
 
         <CardContent className="space-y-6">
           <div className="rounded-xl border border-white/10 bg-black/20 p-6 text-center text-slate-400">
-            <ImageIcon className="mx-auto mb-3 h-10 w-10" />
-            Historical preview shown in dashboard.
+            <PreviewIcon className="mx-auto mb-3 h-10 w-10" />
+            {isDocument ? "Document text and metadata shown below." : "Historical preview shown in dashboard."}
           </div>
 
           <div className="grid gap-3 text-sm">
             <Detail label="File ID" value={item.fileId} />
             <Detail label="Object Key" value={item.objectKey ?? "—"} />
             <Detail label="Filename" value={item.originalFileName ?? "—"} />
+            <Detail label="Media Type" value={item.mediaType ?? "—"} />
+            <Detail label="File Type" value={item.fileType ?? "—"} />
             <Detail label="Status" value={item.status ?? "UNKNOWN"} />
+            <Detail label="Extraction" value={item.extractionStatus ?? "—"} />
+            <Detail
+              label="Words"
+              value={typeof item.wordCount === "number" ? item.wordCount.toString() : "—"}
+            />
             <Detail label="Processed" value={item.processedAt ?? "—"} />
           </div>
 
+          {isDocument ? (
+            <div className="space-y-5">
+              <DocumentInsightsPanel insights={item.documentInsights} />
+              <DocumentTextPanel item={item} maxHeightClass="max-h-72" />
+            </div>
+          ) : (
           <div>
             <h3 className="mb-2 font-semibold">Detected Labels</h3>
             <div className="flex flex-wrap gap-2">
@@ -74,9 +91,13 @@ export function ImageDetailsModal({
               ))}
             </div>
           </div>
+          )}
 
           <div className="flex justify-end gap-3">
-            {onReprocess && item.status !== "PROCESSED" ? (
+            {onReprocess &&
+            item.status !== "PROCESSED" &&
+            item.status !== "DOCUMENT_PENDING" &&
+            item.mediaType !== "document" ? (
               <button
                 type="button"
                 onClick={() => onReprocess(item)}
@@ -109,7 +130,7 @@ export function ImageDetailsModal({
                 className="inline-flex items-center gap-2 rounded-lg border border-red-400/30 px-4 py-2 text-red-300 hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" />
-                {deleting ? "Deleting..." : "Delete Image"}
+                {deleting ? "Deleting..." : "Delete File"}
               </button>
             ) : null}
             <button

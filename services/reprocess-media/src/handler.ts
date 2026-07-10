@@ -57,6 +57,21 @@ export const main = async (event: any) => {
     }
 
     const parsedObjectKey = parseUploadedObjectKey(existingItem.objectKey);
+    const fileType =
+      typeof existingItem.fileType === "string"
+        ? existingItem.fileType
+        : inferFileType(parsedObjectKey.originalFileName);
+    const mediaType =
+      typeof existingItem.mediaType === "string"
+        ? existingItem.mediaType
+        : getMediaType(fileType);
+
+    if (mediaType === "document") {
+      return response(400, {
+        message: "Document extraction is staged for the next document processing step.",
+      });
+    }
+
     const processedAt = new Date().toISOString();
 
     try {
@@ -84,6 +99,8 @@ export const main = async (event: any) => {
         fileId: parsedObjectKey.fileId,
         originalFileName:
           existingItem.originalFileName || parsedObjectKey.originalFileName,
+        fileType,
+        mediaType,
         status: "PROCESSED",
         processedAt,
         labels,
@@ -102,6 +119,8 @@ export const main = async (event: any) => {
         fileId: parsedObjectKey.fileId,
         originalFileName:
           existingItem.originalFileName || parsedObjectKey.originalFileName,
+        fileType,
+        mediaType,
         status: "FAILED",
         processedAt,
         errorMessage:
@@ -182,6 +201,46 @@ function parseUploadedObjectKey(objectKey: string) {
     fileId: fallbackFileName,
     originalFileName: fallbackFileName,
   };
+}
+
+function getMediaType(fileType: string) {
+  if (fileType.startsWith("image/")) return "image";
+
+  if (
+    fileType === "application/pdf" ||
+    fileType === "application/msword" ||
+    fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    return "document";
+  }
+
+  return "unknown";
+}
+
+function inferFileType(fileName: string) {
+  const lowerFileName = fileName.toLowerCase();
+
+  if (lowerFileName.endsWith(".jpg") || lowerFileName.endsWith(".jpeg")) {
+    return "image/jpeg";
+  }
+
+  if (lowerFileName.endsWith(".png")) {
+    return "image/png";
+  }
+
+  if (lowerFileName.endsWith(".pdf")) {
+    return "application/pdf";
+  }
+
+  if (lowerFileName.endsWith(".doc")) {
+    return "application/msword";
+  }
+
+  if (lowerFileName.endsWith(".docx")) {
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
+
+  return "application/octet-stream";
 }
 
 function response(statusCode: number, body: object) {

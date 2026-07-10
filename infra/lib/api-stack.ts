@@ -6,6 +6,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 
 interface ApiStackProps extends cdk.StackProps {
   ingestBucket: s3.Bucket;
@@ -96,6 +97,30 @@ export class ApiStack extends cdk.Stack {
       }
     );
 
+    const openAiSecretName =
+      process.env.OPENAI_API_KEY_SECRET_NAME || "MandVision";
+    const openAiApiKeySecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      "OpenAiApiKeySecret",
+      openAiSecretName
+    );
+
+    const askDocumentLambda = new lambdaNodejs.NodejsFunction(
+      this,
+      "AskDocumentLambda",
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        entry: "../services/ask-document/src/handler.ts",
+        handler: "main",
+        timeout: cdk.Duration.seconds(30),
+        environment: {
+          METADATA_TABLE_NAME: props.metadataTable.tableName,
+          OPENAI_API_KEY_SECRET_NAME: openAiSecretName,
+          OPENAI_MODEL: process.env.OPENAI_MODEL || "gpt-5.5",
+        },
+      }
+    );
+
     props.ingestBucket.grantPut(presignLambda);
     props.metadataTable.grantReadData(getMediaLambda);
     props.metadataTable.grantReadData(listMediaLambda);
@@ -106,6 +131,8 @@ export class ApiStack extends cdk.Stack {
     props.processedBucket.grantDelete(deleteMediaLambda);
     props.metadataTable.grantReadWriteData(reprocessMediaLambda);
     props.ingestBucket.grantRead(reprocessMediaLambda);
+    props.metadataTable.grantReadData(askDocumentLambda);
+    openAiApiKeySecret.grantRead(askDocumentLambda);
     reprocessMediaLambda.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["rekognition:DetectLabels"],
@@ -126,6 +153,10 @@ export class ApiStack extends cdk.Stack {
 
     const media = api.root.addResource("media");
     media.addMethod("GET", new apigateway.LambdaIntegration(listMediaLambda));
+
+    const documents = api.root.addResource("documents");
+    const askDocument = documents.addResource("ask");
+    askDocument.addMethod("POST", new apigateway.LambdaIntegration(askDocumentLambda));
 
     const mediaItem = media.addResource("{fileId}");
     mediaItem.addMethod("GET", new apigateway.LambdaIntegration(getMediaLambda));

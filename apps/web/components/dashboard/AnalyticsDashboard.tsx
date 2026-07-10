@@ -4,9 +4,9 @@ import {
   BarChart3,
   Boxes,
   CalendarDays,
+  FileText,
   ImageIcon,
   Star,
-  TrendingUp,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,10 +23,6 @@ type ActivityPoint = {
 };
 
 const numberFormatter = new Intl.NumberFormat("en");
-const percentFormatter = new Intl.NumberFormat("en", {
-  maximumFractionDigits: 1,
-});
-
 export function AnalyticsDashboard({
   items,
   onLabelSelect,
@@ -37,7 +33,7 @@ export function AnalyticsDashboard({
   const analytics = buildAnalytics(items);
   const maxLabelCount = Math.max(...analytics.topLabels.map((label) => label.count), 1);
   const maxActivityCount = Math.max(...analytics.activity.map((point) => point.count), 1);
-  const hasData = analytics.totalImages > 0;
+  const hasData = analytics.totalFiles > 0;
 
   return (
     <section className="mx-auto max-w-7xl space-y-6 px-6 pt-8">
@@ -47,10 +43,10 @@ export function AnalyticsDashboard({
             Analytics
           </p>
           <h2 className="mt-2 text-3xl font-bold tracking-tight text-white">
-            Image Analytics Dashboard
+            File Intelligence Dashboard
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-slate-400">
-            Overview of your image recognition activity and label insights.
+            Overview of your image recognition and document extraction activity.
           </p>
         </div>
         <div className="rounded-xl border border-white/10 bg-[#0d131c] px-4 py-3 text-sm text-slate-300">
@@ -60,9 +56,9 @@ export function AnalyticsDashboard({
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          title="Total Images Processed"
-          value={numberFormatter.format(analytics.totalImages)}
-          detail={`${numberFormatter.format(analytics.processedImages)} completed`}
+          title="Total Files Processed"
+          value={numberFormatter.format(analytics.totalFiles)}
+          detail={`${numberFormatter.format(analytics.processedFiles)} completed`}
           icon={ImageIcon}
         />
         <MetricCard
@@ -72,10 +68,10 @@ export function AnalyticsDashboard({
           icon={Boxes}
         />
         <MetricCard
-          title="Average Confidence"
-          value={`${percentFormatter.format(analytics.averageConfidence)}%`}
-          detail={`${numberFormatter.format(analytics.confidenceSamples)} confidence scores`}
-          icon={TrendingUp}
+          title="Documents Extracted"
+          value={numberFormatter.format(analytics.extractedDocuments)}
+          detail={`${numberFormatter.format(analytics.totalDocumentWords)} words indexed`}
+          icon={FileText}
         />
         <MetricCard
           title="Top Detected Label"
@@ -231,7 +227,6 @@ function buildAnalytics(items: MediaResult[]) {
   const now = new Date();
   const todayKey = toDateKey(now);
   const labelCounts = new Map<string, { count: number; confidenceTotal: number }>();
-  const confidenceScores: number[] = [];
   let totalObjects = 0;
 
   items.forEach((item) => {
@@ -249,9 +244,6 @@ function buildAnalytics(items: MediaResult[]) {
         confidenceTotal: current.confidenceTotal + confidence,
       });
 
-      if (typeof label.confidence === "number") {
-        confidenceScores.push(label.confidence);
-      }
     });
   });
 
@@ -266,16 +258,21 @@ function buildAnalytics(items: MediaResult[]) {
   const activity = buildActivity(items, now);
 
   return {
-    totalImages: items.length,
-    processedImages: items.filter((item) => item.status === "PROCESSED" || item.labels?.length).length,
+    totalFiles: items.length,
+    processedFiles: items.filter((item) => item.status === "PROCESSED" || item.labels?.length).length,
+    extractedDocuments: items.filter(
+      (item) => item.mediaType === "document" && item.extractionStatus === "COMPLETE"
+    ).length,
+    totalDocumentWords: items.reduce(
+      (total, item) => total + (typeof item.wordCount === "number" ? item.wordCount : 0),
+      0
+    ),
     processedToday: items.filter((item) => {
       const value = item.processedAt || item.uploadedAt;
       return value ? toDateKey(new Date(value)) === todayKey : false;
     }).length,
     totalObjects,
     uniqueLabels: labelCounts.size,
-    averageConfidence: average(confidenceScores),
-    confidenceSamples: confidenceScores.length,
     topLabel: topLabels[0],
     topLabels,
     activity,
@@ -302,11 +299,6 @@ function buildActivity(items: MediaResult[], now: Date): ActivityPoint[] {
   }
 
   return points;
-}
-
-function average(values: number[]) {
-  if (!values.length) return 0;
-  return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
 function toDateKey(date: Date) {

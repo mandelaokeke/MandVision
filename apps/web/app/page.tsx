@@ -2,6 +2,7 @@
 
 import { AuthPanel } from "@/components/dashboard/AuthPanel";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DocumentAssistantCard } from "@/components/dashboard/DocumentAssistantCard";
 import { HistoryCard } from "@/components/dashboard/HistoryCard";
 import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
 import { MetadataCard } from "@/components/dashboard/MetadataCard";
@@ -63,6 +64,13 @@ export default function Home() {
 
       <AnalyticsDashboard items={dashboardItems} onLabelSelect={setHistoryFilter} />
 
+      <DocumentAssistantCard
+        items={dashboardItems}
+        selectedItem={visibleActiveItem}
+        onSelectItem={upload.selectHistoryItem}
+        onFilterTermChange={setHistoryFilter}
+      />
+
       <section className="mx-auto grid max-w-7xl items-start gap-8 px-6 py-8 lg:grid-cols-[minmax(380px,0.9fr)_minmax(0,1.1fr)]">
         <div ref={uploadSectionRef} className="min-w-0 scroll-mt-6 space-y-6">
           <UploadPanel
@@ -80,6 +88,14 @@ export default function Home() {
             uploadedAt={upload.metadata?.uploadedAt}
             historicalSelected={Boolean(upload.selectedHistoryItem)}
             previewLoading={upload.fetchingPreview}
+            mediaType={
+              (visibleActiveItem ?? visibleMetadata)?.mediaType ??
+              (upload.file?.type.startsWith("image/")
+                ? "image"
+                : upload.file
+                ? "document"
+                : undefined)
+            }
           />
 
           <StatusAlert stage={upload.stage} status={upload.status} />
@@ -94,6 +110,10 @@ export default function Home() {
             deletingFileId={upload.deletingFileId}
             onReprocessItem={upload.reprocessMediaItem}
             reprocessingFileId={upload.reprocessingFileId}
+            onReprocessPending={upload.reprocessPendingItems}
+            reprocessingPending={upload.reprocessingPending}
+            onRefresh={upload.fetchHistory}
+            refreshing={upload.refreshingHistory}
             favoriteFileIds={upload.favoriteFileIds}
             onToggleFavorite={upload.toggleFavoriteItem}
             filterTerm={historyFilter}

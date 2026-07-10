@@ -3,10 +3,12 @@
 import {
   Clock3,
   Download,
+  FileText,
   Filter,
   Grid2X2,
   Images,
   List,
+  RefreshCw,
   RotateCcw,
   Search,
   Star,
@@ -14,9 +16,12 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { MediaResult } from "@/hooks/useUpload";
+import { downloadTextFile, getExtractedText, getTextExportFileName } from "@/lib/export";
 
 type DateFilter = "all" | "today" | "7d" | "30d";
+type ExtractionFilter = "all" | "complete" | "failed" | "unavailable";
 type FavoriteFilter = "all" | "favorites";
+type MediaFilter = "all" | "image" | "document";
 type ViewMode = "list" | "gallery";
 
 function formatDate(value?: string) {
@@ -38,6 +43,10 @@ export function HistoryCard({
   deletingFileId,
   onReprocessItem,
   reprocessingFileId,
+  onReprocessPending,
+  reprocessingPending,
+  onRefresh,
+  refreshing,
   favoriteFileIds,
   onToggleFavorite,
   filterTerm,
@@ -50,6 +59,10 @@ export function HistoryCard({
   deletingFileId?: string | null;
   onReprocessItem?: (item: MediaResult) => void;
   reprocessingFileId?: string | null;
+  onReprocessPending?: (items: MediaResult[]) => void;
+  reprocessingPending?: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
   favoriteFileIds?: string[];
   onToggleFavorite?: (item: MediaResult) => void;
   filterTerm: string;
@@ -58,6 +71,9 @@ export function HistoryCard({
   const [showAll, setShowAll] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
+  const [fileTypeFilter, setFileTypeFilter] = useState("all");
+  const [extractionFilter, setExtractionFilter] = useState<ExtractionFilter>("all");
   const [labelFilter, setLabelFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [favoriteFilter, setFavoriteFilter] = useState<FavoriteFilter>("all");
@@ -83,14 +99,34 @@ export function HistoryCard({
     ).sort((first, second) => first.localeCompare(second));
   }, [items]);
 
+  const fileTypeOptions = useMemo(() => {
+    return Array.from(
+      new Set(items.map((item) => item.fileType).filter((fileType): fileType is string => Boolean(fileType)))
+    ).sort((first, second) => first.localeCompare(second));
+  }, [items]);
+
   const filteredItems = useMemo(() => {
     const query = filterTerm.trim().toLowerCase();
 
     return items.filter((item) => {
       const fileName = item.originalFileName?.toLowerCase() || "";
       const labels = item.labels?.map((label) => label.name?.toLowerCase()).join(" ") || "";
-      const hasQueryMatch = !query || fileName.includes(query) || labels.includes(query);
+      const insights = getDocumentInsightValues(item).join(" ").toLowerCase();
+      const documentText = `${item.textPreview || ""} ${item.extractedText || ""}`.toLowerCase();
+      const hasQueryMatch =
+        !query ||
+        fileName.includes(query) ||
+        labels.includes(query) ||
+        insights.includes(query) ||
+        documentText.includes(query);
       const hasStatusMatch = statusFilter === "all" || item.status === statusFilter;
+      const hasMediaMatch = mediaFilter === "all" || item.mediaType === mediaFilter;
+      const hasFileTypeMatch = fileTypeFilter === "all" || item.fileType === fileTypeFilter;
+      const hasExtractionMatch =
+        extractionFilter === "all" ||
+        (extractionFilter === "complete" && item.extractionStatus === "COMPLETE") ||
+        (extractionFilter === "failed" && item.extractionStatus === "FAILED") ||
+        (extractionFilter === "unavailable" && item.status === "DOCUMENT_PENDING");
       const hasLabelMatch =
         labelFilter === "all" || item.labels?.some((label) => label.name === labelFilter);
       const hasConfidenceMatch =
@@ -103,6 +139,9 @@ export function HistoryCard({
       return (
         hasQueryMatch &&
         hasStatusMatch &&
+        hasMediaMatch &&
+        hasFileTypeMatch &&
+        hasExtractionMatch &&
         hasLabelMatch &&
         hasConfidenceMatch &&
         hasDateMatch &&
@@ -113,6 +152,9 @@ export function HistoryCard({
     items,
     filterTerm,
     statusFilter,
+    mediaFilter,
+    fileTypeFilter,
+    extractionFilter,
     labelFilter,
     minimumConfidence,
     dateFilter,
@@ -122,6 +164,9 @@ export function HistoryCard({
 
   const hasAdvancedFilters =
     statusFilter !== "all" ||
+    mediaFilter !== "all" ||
+    fileTypeFilter !== "all" ||
+    extractionFilter !== "all" ||
     labelFilter !== "all" ||
     dateFilter !== "all" ||
     favoriteFilter !== "all" ||
@@ -131,11 +176,15 @@ export function HistoryCard({
   const totalCount = items.length;
   const processedCount = items.filter((item) => isProcessed(item)).length;
   const pendingCount = Math.max(totalCount - processedCount, 0);
+  const filteredPendingItems = filteredItems.filter((item) => isPending(item));
   const favoriteCount = items.filter((item) => favoriteSet.has(item.fileId)).length;
 
   function resetFilters() {
     onFilterTermChange("");
     setStatusFilter("all");
+    setMediaFilter("all");
+    setFileTypeFilter("all");
+    setExtractionFilter("all");
     setLabelFilter("all");
     setDateFilter("all");
     setFavoriteFilter("all");
@@ -170,22 +219,35 @@ export function HistoryCard({
           <div className="min-w-0 flex-1">
             <h2 className="text-xl font-semibold tracking-tight">Upload History</h2>
             <p className="text-sm text-slate-400">
-              {totalCount} images • {processedCount} processed • {pendingCount} pending • {favoriteCount} favorites
+              {totalCount} files • {processedCount} processed • {pendingCount} pending • {favoriteCount} favorites
             </p>
           </div>
-          <div className="flex rounded-lg border border-white/10 bg-black/20 p-1">
-            <ViewModeButton
-              active={viewMode === "list"}
-              label="List"
-              icon={List}
-              onClick={() => setViewMode("list")}
-            />
-            <ViewModeButton
-              active={viewMode === "gallery"}
-              label="Gallery"
-              icon={Grid2X2}
-              onClick={() => setViewMode("gallery")}
-            />
+          <div className="flex items-center gap-2">
+            {onRefresh ? (
+              <button
+                type="button"
+                aria-label="Refresh upload history"
+                onClick={onRefresh}
+                disabled={refreshing}
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-black/20 text-slate-300 transition hover:border-emerald-400/30 hover:bg-emerald-400/10 hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+              </button>
+            ) : null}
+            <div className="flex rounded-lg border border-white/10 bg-black/20 p-1">
+              <ViewModeButton
+                active={viewMode === "list"}
+                label="List"
+                icon={List}
+                onClick={() => setViewMode("list")}
+              />
+              <ViewModeButton
+                active={viewMode === "gallery"}
+                label="Gallery"
+                icon={Grid2X2}
+                onClick={() => setViewMode("gallery")}
+              />
+            </div>
           </div>
         </div>
 
@@ -197,7 +259,7 @@ export function HistoryCard({
               onFilterTermChange(event.target.value);
               setShowAll(true);
             }}
-            placeholder="Search by file name or label..."
+            placeholder="Search by file name, label, or extracted document text..."
             className="flex h-10 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 pl-9 text-sm text-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40"
           />
         </div>
@@ -216,6 +278,17 @@ export function HistoryCard({
               </span>
             </button>
             <div className="flex items-center gap-2">
+              {onReprocessPending ? (
+                <button
+                  type="button"
+                  onClick={() => onReprocessPending(filteredPendingItems)}
+                  disabled={!filteredPendingItems.length || reprocessingPending}
+                  className="inline-flex items-center gap-2 rounded-lg border border-amber-300/30 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <RotateCcw className={`h-3.5 w-3.5 ${reprocessingPending ? "animate-spin" : ""}`} />
+                  Reprocess Pending
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={exportFilteredItems}
@@ -250,6 +323,39 @@ export function HistoryCard({
                   ]}
                 />
                 <FilterSelect
+                  label="Media Type"
+                  value={mediaFilter}
+                  onChange={(value) => setMediaFilter(value as MediaFilter)}
+                  options={[
+                    { value: "all", label: "All media" },
+                    { value: "image", label: "Images" },
+                    { value: "document", label: "Documents" },
+                  ]}
+                />
+                <FilterSelect
+                  label="File Format"
+                  value={fileTypeFilter}
+                  onChange={setFileTypeFilter}
+                  options={[
+                    { value: "all", label: "All formats" },
+                    ...fileTypeOptions.map((fileType) => ({
+                      value: fileType,
+                      label: formatFileType(fileType),
+                    })),
+                  ]}
+                />
+                <FilterSelect
+                  label="Extraction"
+                  value={extractionFilter}
+                  onChange={(value) => setExtractionFilter(value as ExtractionFilter)}
+                  options={[
+                    { value: "all", label: "Any extraction" },
+                    { value: "complete", label: "Extracted text" },
+                    { value: "failed", label: "Extraction failed" },
+                    { value: "unavailable", label: "Unavailable" },
+                  ]}
+                />
+                <FilterSelect
                   label="Label"
                   value={labelFilter}
                   onChange={setLabelFilter}
@@ -274,7 +380,7 @@ export function HistoryCard({
                   value={favoriteFilter}
                   onChange={(value) => setFavoriteFilter(value as FavoriteFilter)}
                   options={[
-                    { value: "all", label: "All images" },
+                    { value: "all", label: "All files" },
                     { value: "favorites", label: "Favorites only" },
                   ]}
                 />
@@ -430,13 +536,14 @@ function HistoryListItem({
             <p className="truncate font-semibold text-slate-100">
               {item.originalFileName || item.fileId}
             </p>
-            <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
               <Clock3 className="h-3.5 w-3.5" />
               <span>{formatDate(item.processedAt || item.uploadedAt)}</span>
+              <FileTypeBadge item={item} />
             </div>
           </div>
 
-          <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(item.status)}`}>
             {item.status || "UNKNOWN"}
           </span>
         </div>
@@ -482,11 +589,19 @@ function HistoryGalleryItem({
   const [loading, setLoading] = useState(true);
   const [available, setAvailable] = useState(true);
   const topLabels = item.labels?.slice(0, 2) || [];
+  const isDocument = item.mediaType === "document";
 
   useEffect(() => {
     let cancelled = false;
 
     async function fetchThumbnail() {
+      if (item.mediaType === "document") {
+        setPreviewUrl(null);
+        setLoading(false);
+        setAvailable(false);
+        return;
+      }
+
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
@@ -534,7 +649,7 @@ function HistoryGalleryItem({
     return () => {
       cancelled = true;
     };
-  }, [item.fileId]);
+  }, [item.fileId, item.mediaType]);
 
   return (
     <div
@@ -544,10 +659,21 @@ function HistoryGalleryItem({
     >
       <button type="button" onClick={() => onSelectItem(item)} className="block w-full text-left">
         <div
-          className="flex aspect-[4/3] items-center justify-center bg-slate-950 bg-cover bg-center text-sm text-slate-500"
-          style={previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined}
+          className="flex aspect-[4/3] items-center justify-center bg-slate-950 bg-cover bg-center p-5 text-center text-sm text-slate-500"
+          style={!isDocument && previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined}
         >
-          {loading ? "Loading preview..." : available ? null : "Preview unavailable"}
+          {isDocument ? (
+            <div className="space-y-3">
+              <FileText className="mx-auto h-8 w-8 text-sky-300" />
+              <p className="line-clamp-4 text-xs leading-5 text-slate-400">
+                {item.textPreview || "Document text preview unavailable"}
+              </p>
+            </div>
+          ) : loading ? (
+            "Loading preview..."
+          ) : available ? null : (
+            "Preview unavailable"
+          )}
         </div>
         <div className="space-y-3 p-4">
           <div className="min-w-0">
@@ -557,13 +683,20 @@ function HistoryGalleryItem({
             <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
               <Clock3 className="h-3.5 w-3.5" />
               <span>{formatDate(item.processedAt || item.uploadedAt)}</span>
+              <FileTypeBadge item={item} />
             </div>
           </div>
           <div className="flex items-center justify-between gap-3">
-            <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(item.status)}`}>
               {item.status || "UNKNOWN"}
             </span>
-            <span className="text-xs text-slate-500">{item.labels?.length || 0} labels</span>
+            <span className="text-xs text-slate-500">
+              {isDocument
+                ? typeof item.wordCount === "number"
+                  ? `${item.wordCount} words`
+                  : "document"
+                : `${item.labels?.length || 0} labels`}
+            </span>
           </div>
           <LabelPills item={item} labels={topLabels} />
         </div>
@@ -592,6 +725,38 @@ function LabelPills({
   item: MediaResult;
   labels: NonNullable<MediaResult["labels"]>;
 }) {
+  if (item.mediaType === "document") {
+    const insightValues = getDocumentInsightValues(item).slice(0, 3);
+
+    return (
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-2">
+          <span className="rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-xs text-sky-200">
+            {item.extractionStatus || "DOCUMENT"}
+          </span>
+          {typeof item.wordCount === "number" ? (
+            <span className="rounded-full border border-white/10 bg-slate-900 px-3 py-1 text-xs text-slate-300">
+              {item.wordCount} words
+            </span>
+          ) : null}
+          {insightValues.map((value) => (
+            <span
+              key={`${item.fileId}-${value}`}
+              className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs text-emerald-200"
+            >
+              {value}
+            </span>
+          ))}
+        </div>
+        {item.textPreview ? (
+          <p className="line-clamp-2 text-xs leading-5 text-slate-400">
+            {item.textPreview}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-wrap gap-2">
       {labels.length > 0 ? (
@@ -607,6 +772,16 @@ function LabelPills({
         <span className="text-xs text-slate-500">No labels available</span>
       )}
     </div>
+  );
+}
+
+function FileTypeBadge({ item }: { item: MediaResult }) {
+  const label = item.fileType ? formatFileType(item.fileType) : item.mediaType || "file";
+
+  return (
+    <span className="rounded-full border border-white/10 bg-slate-900 px-2 py-0.5 text-[11px] font-medium uppercase text-slate-400">
+      {label}
+    </span>
   );
 }
 
@@ -629,7 +804,18 @@ function HistoryItemActions({
   onReprocessItem?: (item: MediaResult) => void;
   horizontal?: boolean;
 }) {
-  const canReprocess = item.status !== "PROCESSED";
+  const canReprocess =
+    item.status !== "PROCESSED" &&
+    item.status !== "DOCUMENT_PENDING" &&
+    item.mediaType !== "document";
+  const extractedText = getExtractedText(item);
+
+  function downloadExtractedText() {
+    downloadTextFile({
+      contents: extractedText,
+      fileName: getTextExportFileName(item),
+    });
+  }
 
   return (
     <div className={horizontal ? "flex flex-1 gap-2" : "flex w-11 shrink-0 flex-col gap-2"}>
@@ -644,6 +830,19 @@ function HistoryItemActions({
           }`}
         >
           <RotateCcw className={`h-4 w-4 ${reprocessing ? "animate-spin" : ""}`} />
+        </button>
+      ) : null}
+
+      {item.mediaType === "document" && extractedText ? (
+        <button
+          type="button"
+          aria-label={`Download extracted text for ${item.originalFileName || item.fileId}`}
+          onClick={downloadExtractedText}
+          className={`flex h-11 items-center justify-center rounded-lg border border-sky-300/20 text-sky-200 transition hover:border-sky-300/50 hover:bg-sky-300/10 ${
+            horizontal ? "flex-1" : ""
+          }`}
+        >
+          <Download className="h-4 w-4" />
         </button>
       ) : null}
 
@@ -714,6 +913,30 @@ function isProcessed(item: MediaResult) {
   return item.status === "PROCESSED" || Boolean(item.labels?.length);
 }
 
+function isPending(item: MediaResult) {
+  return (
+    item.status !== "PROCESSED" &&
+    item.status !== "FAILED" &&
+    item.status !== "DOCUMENT_PENDING"
+  );
+}
+
+function statusBadgeClass(status?: string) {
+  if (status === "PROCESSED") {
+    return "border-emerald-400/30 bg-emerald-400/10 text-emerald-300";
+  }
+
+  if (status === "FAILED") {
+    return "border-red-400/30 bg-red-400/10 text-red-300";
+  }
+
+  if (status === "DOCUMENT_PENDING") {
+    return "border-sky-300/30 bg-sky-300/10 text-sky-200";
+  }
+
+  return "border-amber-300/30 bg-amber-300/10 text-amber-200";
+}
+
 function matchesDateFilter(item: MediaResult, filter: DateFilter) {
   if (filter === "all") return true;
 
@@ -738,6 +961,20 @@ function matchesDateFilter(item: MediaResult, filter: DateFilter) {
   return date >= cutoff;
 }
 
+function formatFileType(fileType: string) {
+  const normalized = fileType.toLowerCase();
+
+  if (normalized === "image/jpeg") return "JPG";
+  if (normalized === "image/png") return "PNG";
+  if (normalized === "application/pdf") return "PDF";
+  if (normalized === "application/msword") return "DOC";
+  if (normalized === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    return "DOCX";
+  }
+
+  return fileType;
+}
+
 function buildHistoryCsv(items: MediaResult[], favoriteSet: Set<string>) {
   const rows = items.flatMap((item) => {
     const labels = item.labels?.length ? item.labels : [{ name: "", confidence: undefined }];
@@ -751,6 +988,17 @@ function buildHistoryCsv(items: MediaResult[], favoriteSet: Set<string>) {
       bucket: item.bucket || "",
       objectKey: item.objectKey || "",
       fileSize: item.fileSize?.toString() || "",
+      fileType: item.fileType || "",
+      mediaType: item.mediaType || "",
+      extractionStatus: item.extractionStatus || "",
+      wordCount: typeof item.wordCount === "number" ? item.wordCount.toString() : "",
+      textPreview: item.textPreview || "",
+      extractedText: item.extractedText || "",
+      insightEmails: item.documentInsights?.emails?.join("; ") || "",
+      insightPhoneNumbers: item.documentInsights?.phoneNumbers?.join("; ") || "",
+      insightDates: item.documentInsights?.dates?.join("; ") || "",
+      insightAmounts: item.documentInsights?.amounts?.join("; ") || "",
+      insightIdentifiers: item.documentInsights?.identifiers?.join("; ") || "",
       favorite: favoriteSet.has(item.fileId) ? "yes" : "no",
       labelName: label.name || "",
       labelConfidence:
@@ -767,6 +1015,17 @@ function buildHistoryCsv(items: MediaResult[], favoriteSet: Set<string>) {
     "bucket",
     "objectKey",
     "fileSize",
+    "fileType",
+    "mediaType",
+    "extractionStatus",
+    "wordCount",
+    "textPreview",
+    "extractedText",
+    "insightEmails",
+    "insightPhoneNumbers",
+    "insightDates",
+    "insightAmounts",
+    "insightIdentifiers",
     "favorite",
     "labelName",
     "labelConfidence",
@@ -776,6 +1035,19 @@ function buildHistoryCsv(items: MediaResult[], favoriteSet: Set<string>) {
     headers.join(","),
     ...rows.map((row) => headers.map((header) => escapeCsvCell(row[header as keyof typeof row])).join(",")),
   ].join("\n");
+}
+
+function getDocumentInsightValues(item: MediaResult) {
+  const insights = item.documentInsights;
+  if (!insights) return [];
+
+  return [
+    ...(insights.emails || []),
+    ...(insights.phoneNumbers || []),
+    ...(insights.dates || []),
+    ...(insights.amounts || []),
+    ...(insights.identifiers || []),
+  ];
 }
 
 function escapeCsvCell(value: string) {

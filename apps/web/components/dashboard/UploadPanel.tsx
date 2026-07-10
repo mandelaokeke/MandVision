@@ -20,7 +20,7 @@ export function UploadPanel({
       <label className="group flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-500/70 bg-[#0d131c] p-8 text-center transition hover:border-emerald-400/70 hover:bg-emerald-400/[0.03]">
         <input
           type="file"
-          accept="image/jpeg,image/png"
+          accept="image/jpeg,image/png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           onChange={onFileChange}
           className="hidden"
         />
@@ -28,11 +28,11 @@ export function UploadPanel({
           <CloudUpload className="h-8 w-8" />
         </div>
         <p className="text-lg font-semibold text-white">
-          Drag & drop an image here
+          Drag & drop an image or document here
         </p>
         <p className="text-slate-300">or click to browse</p>
         <p className="mt-5 text-sm text-slate-500">
-          Supported formats: JPG, JPEG, PNG
+          Supported formats: JPG, PNG, PDF, DOC, DOCX
         </p>
       </label>
 
@@ -41,7 +41,7 @@ export function UploadPanel({
         disabled={uploading || !hasFile}
         className="h-14 w-full rounded-2xl bg-emerald-500 text-base font-bold text-[#04100a] shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none"
       >
-        {uploading ? "Uploading..." : "Upload Image"}
+        {uploading ? "Uploading..." : "Upload File"}
       </Button>
     </div>
   );

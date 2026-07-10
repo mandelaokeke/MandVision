@@ -61,7 +61,7 @@ export function AuthPanel({
             {isForgot
               ? "Enter your username or email and MandVision will send a reset link."
               : isSignup
-              ? "You can browse the public analytics first. Sign up to switch MandVision into your own image dashboard."
+              ? "You can browse the public analytics first. Sign up to switch MandVision into your own file intelligence dashboard."
               : "Already have a MandVision profile? Sign in to view your personal uploads and analytics."}
           </p>
           <div className="mt-2 flex flex-wrap gap-3">

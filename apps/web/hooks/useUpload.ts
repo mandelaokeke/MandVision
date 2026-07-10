@@ -15,12 +15,22 @@ export type UploadMetadata = {
   key: string;
   fileName: string;
   fileSize: number;
+  fileType?: string;
+  mediaType?: "image" | "document" | "unknown";
   uploadedAt: string;
 };
 
 export type MediaLabel = {
   name?: string;
   confidence?: number;
+};
+
+export type DocumentInsights = {
+  emails?: string[];
+  phoneNumbers?: string[];
+  dates?: string[];
+  amounts?: string[];
+  identifiers?: string[];
 };
 
 export type MediaResult = {
@@ -34,6 +44,13 @@ export type MediaResult = {
   processedAt?: string;
   labels?: MediaLabel[];
   fileSize?: number;
+  fileType?: string;
+  mediaType?: "image" | "document" | "unknown";
+  extractionStatus?: string;
+  extractedText?: string;
+  textPreview?: string;
+  wordCount?: number;
+  documentInsights?: DocumentInsights;
   errorMessage?: string;
 };
 
@@ -44,20 +61,29 @@ type WebSocketMessage = {
 
 const FAVORITES_STORAGE_KEY = "mandvision.favoriteFileIds";
 const MEDIA_OWNERS_STORAGE_KEY = "mandvision.mediaOwners";
+const SUPPORTED_FILE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
 
 export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [stage, setStage] = useState<UploadStage>("idle");
-  const [status, setStatus] = useState("Choose a JPG or PNG image to begin.");
+  const [status, setStatus] = useState("Choose a JPG, PNG, PDF, DOC, or DOCX file to begin.");
   const [metadata, setMetadata] = useState<UploadMetadata | null>(null);
   const [result, setResult] = useState<MediaResult | null>(null);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<MediaResult | null>(null);
   const [history, setHistory] = useState<MediaResult[]>([]);
   const [uploading, setUploading] = useState(false);
   const [fetchingPreview, setFetchingPreview] = useState(false);
+  const [refreshingHistory, setRefreshingHistory] = useState(false);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const [reprocessingFileId, setReprocessingFileId] = useState<string | null>(null);
+  const [reprocessingPending, setReprocessingPending] = useState(false);
   const [favoriteFileIds, setFavoriteFileIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
 
@@ -69,7 +95,7 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
 
       return parsedFavorites.filter((fileId): fileId is string => typeof fileId === "string");
     } catch (error) {
-      console.error("Could not load favorite images", error);
+      console.error("Could not load favorite files", error);
       return [];
     }
   });
@@ -111,10 +137,22 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
   }, []);
 
   useEffect(() => {
+    const hasPendingItems = history.some((item) => isPendingMediaItem(item));
+
+    if (!hasPendingItems) return;
+
+    const intervalId = window.setInterval(() => {
+      void fetchHistory({ silent: true });
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [history]);
+
+  useEffect(() => {
     try {
       window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favoriteFileIds));
     } catch (error) {
-      console.error("Could not save favorite images", error);
+      console.error("Could not save favorite files", error);
     }
   }, [favoriteFileIds]);
 
@@ -190,7 +228,7 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
     if (!selectedFile) {
       setPreviewUrl(null);
       setStage("idle");
-      setStatus("Choose a JPG or PNG image to begin.");
+      setStatus("Choose a JPG, PNG, PDF, DOC, or DOCX file to begin.");
       return;
     }
 
@@ -198,22 +236,24 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
       URL.revokeObjectURL(previewUrl);
     }
 
-    setPreviewUrl(URL.createObjectURL(selectedFile));
+    setPreviewUrl(selectedFile.type.startsWith("image/") ? URL.createObjectURL(selectedFile) : null);
     setStage("selected");
-    setStatus("Image selected. Ready for secure upload.");
+    setStatus(
+      selectedFile.type.startsWith("image/")
+        ? "Image selected. Ready for secure upload."
+        : "Document selected. Ready for secure upload."
+    );
   }
 
   async function handleUpload() {
     if (!file) {
-      setStatus("Please select an image first.");
+      setStatus("Please select a file first.");
       setStage("error");
       return;
     }
 
-    const supportedTypes = ["image/jpeg", "image/png"];
-
-    if (!supportedTypes.includes(file.type)) {
-      setStatus("Unsupported image format. Please upload a JPG or PNG file.");
+    if (!SUPPORTED_FILE_TYPES.includes(file.type)) {
+      setStatus("Unsupported format. Please upload a JPG, PNG, PDF, DOC, or DOCX file.");
       setStage("error");
       return;
     }
@@ -253,7 +293,7 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
         }));
       }
 
-      setStatus("Uploading image directly to S3...");
+      setStatus("Uploading file directly to S3...");
 
       const uploadResponse = await fetch(uploadUrl, {
         method: "PUT",
@@ -270,11 +310,17 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
         key,
         fileName: file.name,
         fileSize: file.size,
+        fileType: file.type,
+        mediaType: getMediaType(file.type),
         uploadedAt,
       });
 
       setStage("processing");
-      setStatus("Upload complete. MandVision is processing your image with Rekognition.");
+      setStatus(
+        file.type.startsWith("image/")
+          ? "Upload complete. MandVision is processing your image with Rekognition."
+          : "Upload complete. MandVision is extracting document text."
+      );
 
       void pollForResults(fileId);
     } catch (error) {
@@ -297,12 +343,24 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
       key: item.objectKey || "",
       fileName: item.originalFileName || item.fileId,
       fileSize: item.fileSize || 0,
+      fileType: item.fileType,
+      mediaType: item.mediaType,
       uploadedAt: item.uploadedAt || item.processedAt || new Date().toISOString(),
     });
-    setStage(item.status === "PROCESSED" ? "complete" : item.status === "FAILED" ? "error" : "processing");
+    setStage(
+      item.status === "PROCESSED" || item.status === "DOCUMENT_PENDING"
+        ? "complete"
+        : item.status === "FAILED"
+        ? "error"
+        : "processing"
+    );
     setStatus(
-      item.status === "PROCESSED"
+      item.mediaType === "document" && item.status === "PROCESSED"
+        ? "Loaded previous document result from upload history."
+        : item.status === "PROCESSED"
         ? "Loaded previous processed result from upload history. Fetching preview image..."
+        : item.status === "DOCUMENT_PENDING"
+        ? "Document uploaded. Text extraction is not available for this file type yet."
         : item.status === "FAILED"
         ? item.errorMessage || "This upload could not be processed."
         : "Loaded previous upload from history. Processing may still be pending."
@@ -348,27 +406,67 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
     }
   }
 
-  async function fetchHistory() {
+  async function fetchHistory({ silent = false }: { silent?: boolean } = {}) {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
       if (!apiUrl) return;
+
+      if (!silent) {
+        setRefreshingHistory(true);
+      }
 
       const response = await fetch(`${apiUrl}/media/`);
 
       if (!response.ok) return;
 
       const data = (await response.json()) as { items?: MediaResult[] };
-      setHistory(data.items || []);
+      const nextHistory = data.items || [];
+      setHistory(nextHistory);
+
+      const activeFileId = activeFileIdRef.current;
+
+      if (activeFileId) {
+        const nextActiveItem = nextHistory.find((item) => item.fileId === activeFileId);
+
+        if (nextActiveItem) {
+          setResult(nextActiveItem);
+          setSelectedHistoryItem((currentItem) =>
+            currentItem?.fileId === activeFileId ? nextActiveItem : currentItem
+          );
+
+          if (nextActiveItem.mediaType === "document" && nextActiveItem.status === "PROCESSED") {
+            setStage("complete");
+            setStatus("Document text extraction complete.");
+          } else if (nextActiveItem.status === "PROCESSED") {
+            setStage("complete");
+            setStatus("Processing complete. Rekognition labels are ready.");
+          }
+
+          if (nextActiveItem.status === "DOCUMENT_PENDING") {
+            setStage("complete");
+            setStatus("Document uploaded. Text extraction is not available for this file type yet.");
+          }
+
+          if (nextActiveItem.status === "FAILED") {
+            setStage("error");
+            setStatus(nextActiveItem.errorMessage || "This upload could not be processed.");
+          }
+        }
+      }
     } catch (error) {
       console.error("Could not fetch upload history", error);
+    } finally {
+      if (!silent) {
+        setRefreshingHistory(false);
+      }
     }
   }
 
   async function deleteMediaItem(item: MediaResult) {
     const displayName = item.originalFileName || item.fileId;
     const confirmed = window.confirm(
-      `Delete ${displayName}? This removes the image from storage and history.`
+      `Delete ${displayName}? This removes the file from storage and history.`
     );
 
     if (!confirmed) return;
@@ -426,7 +524,7 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
       setStatus(
         error instanceof TypeError
           ? "Delete is not available on the deployed API yet. Deploy MandImageApiStack, then try again."
-          : "Could not delete this image. Please try again."
+          : "Could not delete this file. Please try again."
       );
     } finally {
       setDeletingFileId(null);
@@ -483,9 +581,36 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
     } catch (error) {
       console.error("Could not reprocess media item", error);
       setStage("error");
-      setStatus("Could not reprocess this image. Please try again.");
+      setStatus("Could not reprocess this file. Please try again.");
     } finally {
       setReprocessingFileId(null);
+    }
+  }
+
+  async function reprocessPendingItems(items: MediaResult[] = history) {
+    const pendingItems = items.filter((item) => isPendingMediaItem(item));
+
+    if (!pendingItems.length) {
+      setStatus("No pending uploads need reprocessing.");
+      return;
+    }
+
+    try {
+      setReprocessingPending(true);
+      setStatus(`Reprocessing ${pendingItems.length} pending upload${pendingItems.length === 1 ? "" : "s"}...`);
+
+      for (const item of pendingItems) {
+        await reprocessMediaItem(item);
+      }
+
+      await fetchHistory({ silent: true });
+      setStatus(`Reprocess request finished for ${pendingItems.length} pending upload${pendingItems.length === 1 ? "" : "s"}.`);
+    } catch (error) {
+      console.error("Could not reprocess pending media items", error);
+      setStage("error");
+      setStatus("Could not reprocess all pending uploads. Please try again.");
+    } finally {
+      setReprocessingPending(false);
     }
   }
 
@@ -508,9 +633,21 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
         setResult(mediaResult);
         setHistory((currentHistory) => upsertHistoryItem(currentHistory, mediaResult));
 
+        if (mediaResult.mediaType === "document" && mediaResult.status === "PROCESSED") {
+          setStage("complete");
+          setStatus("Document text extraction complete.");
+          return;
+        }
+
         if (mediaResult.status === "PROCESSED") {
           setStage("complete");
           setStatus("Processing complete. Rekognition labels are ready.");
+          return;
+        }
+
+        if (mediaResult.status === "DOCUMENT_PENDING") {
+          setStage("complete");
+          setStatus("Document uploaded. Text extraction is not available for this file type yet.");
           return;
         }
 
@@ -521,11 +658,11 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
         }
       }
 
-      setStatus(`Processing image... checking results (${attempt}/8)`);
+      setStatus(`Processing file... checking results (${attempt}/8)`);
     }
 
     setStage("processing");
-    setStatus("Still processing. Refresh or upload another image in a moment.");
+    setStatus("Still processing. Refresh or upload another file in a moment.");
   }
 
   function toggleFavoriteItem(item: MediaResult) {
@@ -551,14 +688,17 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
     mediaOwners,
     uploading,
     fetchingPreview,
+    refreshingHistory,
     deletingFileId,
     reprocessingFileId,
+    reprocessingPending,
     favoriteFileIds,
     progressLabel,
     handleFileChange,
     handleUpload,
     deleteMediaItem,
     reprocessMediaItem,
+    reprocessPendingItems,
     toggleFavoriteItem,
     fetchHistory,
     fetchPreviewUrl,
@@ -571,4 +711,25 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
 function upsertHistoryItem(items: MediaResult[], nextItem: MediaResult) {
   const withoutDuplicate = items.filter((item) => item.fileId !== nextItem.fileId);
   return [nextItem, ...withoutDuplicate];
+}
+
+function isPendingMediaItem(item: MediaResult) {
+  return (
+    item.status !== "PROCESSED" &&
+    item.status !== "FAILED" &&
+    item.status !== "DOCUMENT_PENDING"
+  );
+}
+
+function getMediaType(fileType: string): "image" | "document" | "unknown" {
+  if (fileType.startsWith("image/")) return "image";
+  if (
+    fileType === "application/pdf" ||
+    fileType === "application/msword" ||
+    fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    return "document";
+  }
+
+  return "unknown";
 }
