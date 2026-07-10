@@ -20,10 +20,10 @@ type AssistantAnswer = {
 };
 
 const quickQuestions = [
-  "What invoice totals are in my documents?",
+  "What can VisoAI answer?",
+  "How do I upload files?",
+  "How do I manage uploads?",
   "Which documents mention an email?",
-  "Find phone numbers",
-  "Show documents with dates",
 ];
 
 export function DocumentAssistantCard({
@@ -65,6 +65,10 @@ export function DocumentAssistantCard({
     () => buildSuggestedQuestions(selectedDocument),
     [selectedDocument]
   );
+  const promptSuggestions = useMemo(
+    () => Array.from(new Set([...suggestedQuestions, ...quickQuestions])).slice(0, 6),
+    [suggestedQuestions]
+  );
   const answer = useMemo(
     () => buildAnswer(submittedQuestion, searchableDocuments),
     [submittedQuestion, searchableDocuments]
@@ -80,6 +84,13 @@ export function DocumentAssistantCard({
     setSubmittedQuestion(cleanQuestion);
     setBackendAnswer(null);
     setBackendError("");
+
+    const appAnswer = buildAppAnswer(cleanQuestion);
+    if (appAnswer) {
+      setBackendAnswer(appAnswer);
+      return;
+    }
+
     void askBackend(cleanQuestion, searchableDocuments);
   }
 
@@ -143,7 +154,7 @@ export function DocumentAssistantCard({
 
       setBackendAnswer({
         question: nextQuestion,
-        summary: data.answer || answer.summary,
+        summary: data.answer || buildAnswer(nextQuestion, scopedDocuments).summary,
         mode: data.mode,
         aiError: data.aiError,
         matches,
@@ -167,11 +178,11 @@ export function DocumentAssistantCard({
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-200/80">
-                Phase 5.2
+                Assistant
               </p>
-              <h2 className="mt-1 text-xl font-semibold tracking-tight">Ask MandVision</h2>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight">VisoAI</h2>
               <p className="mt-1 text-sm text-slate-400">
-                Ask questions across extracted document text and detected key details.
+                Ask about the app, or get quick answers from processed documents.
               </p>
             </div>
           </div>
@@ -192,13 +203,13 @@ export function DocumentAssistantCard({
             <input
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Ask about invoices, dates, emails, totals, or document text..."
+              placeholder="Ask VisoAI about the app, summaries, emails, dates, or document details..."
               className="h-11 w-full rounded-lg border border-white/10 bg-black/20 px-3 pl-9 text-sm text-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/40"
             />
           </div>
           <button
             type="submit"
-            disabled={!question.trim() || documents.length === 0}
+            disabled={!question.trim()}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-sky-300/30 bg-sky-300/10 px-4 text-sm font-medium text-sky-200 transition hover:bg-sky-300/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Sparkles className="h-4 w-4" />
@@ -229,12 +240,11 @@ export function DocumentAssistantCard({
               </label>
             </>
           ) : null}
-          {[...suggestedQuestions, ...quickQuestions].map((quickQuestion) => (
+          {promptSuggestions.map((quickQuestion) => (
             <button
               key={quickQuestion}
               type="button"
               onClick={() => askQuestion(quickQuestion)}
-              disabled={documents.length === 0}
               className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-sky-300/40 hover:bg-sky-300/10 hover:text-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {quickQuestion}
@@ -247,9 +257,9 @@ export function DocumentAssistantCard({
             <div className="rounded-xl border border-white/10 bg-black/20 p-5 text-sm text-slate-400">
               {documents.length
                 ? selectedDocument
-                  ? "Try asking about the selected document or search across all extracted documents."
-                  : "Try asking for invoice totals, dates, emails, phone numbers, or any phrase inside your documents."
-                : "Upload a PDF or DOCX to start asking questions about document content."}
+                  ? "Ask VisoAI about the selected document, or search across all processed documents."
+                  : "Ask VisoAI how MandVision works, or ask about dates, emails, summaries, and details inside your documents."
+                : "Ask VisoAI how MandVision works, or upload a PDF/DOCX to start asking about document content."}
             </div>
           ) : visibleAnswer.summary || visibleAnswer.matches.length > 0 ? (
             <div className="space-y-4">
@@ -257,6 +267,8 @@ export function DocumentAssistantCard({
                 className={`rounded-xl border p-4 text-sm ${
                   visibleAnswer.mode === "ai"
                     ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-50"
+                    : visibleAnswer.mode === "app"
+                      ? "border-sky-300/20 bg-sky-300/10 text-sky-100"
                     : "border-sky-300/20 bg-sky-300/10 text-sky-100"
                 }`}
               >
@@ -265,6 +277,8 @@ export function DocumentAssistantCard({
                     className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${
                       visibleAnswer.mode === "ai"
                         ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-100"
+                        : visibleAnswer.mode === "app"
+                          ? "border-sky-300/30 bg-sky-300/10 text-sky-100"
                         : "border-sky-300/30 bg-sky-300/10 text-sky-100"
                     }`}
                   >
@@ -272,6 +286,11 @@ export function DocumentAssistantCard({
                       <>
                         <Sparkles className="h-3.5 w-3.5" />
                         AI answer
+                      </>
+                    ) : visibleAnswer.mode === "app" ? (
+                      <>
+                        <Bot className="h-3.5 w-3.5" />
+                        App guide
                       </>
                     ) : (
                       <>
@@ -400,6 +419,48 @@ function buildAnswer(question: string, documents: MediaResult[]): AssistantAnswe
     summary: summarizeAnswer(cleanQuestion, matches, intent),
     matches,
   };
+}
+
+function buildAppAnswer(question: string): AssistantAnswer | null {
+  const normalized = question.toLowerCase();
+  const makeAnswer = (summary: string): AssistantAnswer => ({
+    question,
+    summary,
+    mode: "app",
+    matches: [],
+  });
+
+  if (/\b(visoai|ai|assistant|ask|question|summary|summarize|source|snippet)\b/.test(normalized)) {
+    return makeAnswer(
+      "VisoAI answers questions about MandVision and your processed documents. You can ask for summaries, emails, dates, IDs, invoice details, or where a detail appears in an uploaded PDF or Word document."
+    );
+  }
+
+  if (/\b(upload|file|image|pdf|doc|docx|process|processing)\b/.test(normalized)) {
+    return makeAnswer(
+      "Use Upload to add JPG, PNG, PDF, DOC, or DOCX files. MandVision stores the file, processes it, then adds searchable results to your Library once processing is complete."
+    );
+  }
+
+  if (/\b(library|manage|delete|favorite|filter|export|history|download|preview)\b/.test(normalized)) {
+    return makeAnswer(
+      "Use Library to manage processed uploads. From there you can preview files, filter results, mark favorites, export CSV data, download originals, and delete uploads you no longer need."
+    );
+  }
+
+  if (/\b(sign|login|log in|account|password|auth|cognito|user)\b/.test(normalized)) {
+    return makeAnswer(
+      "Create an account or sign in from the dashboard. When signed in, MandVision can show your own uploads and account actions, including password recovery and account deletion."
+    );
+  }
+
+  if (/\b(app|mandvision|help|how do i|what can|where do i)\b/.test(normalized)) {
+    return makeAnswer(
+      "MandVision has four main areas: Dashboard for analytics, Upload for adding files, Library for managing processed media, and VisoAI for asking questions about the app or your processed documents."
+    );
+  }
+
+  return null;
 }
 
 function scoreDocument(

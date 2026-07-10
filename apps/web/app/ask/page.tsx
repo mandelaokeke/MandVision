@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { DocumentAssistantCard } from "@/components/dashboard/DocumentAssistantCard";
-import { MetadataCard } from "@/components/dashboard/MetadataCard";
-import { ResultsCard } from "@/components/dashboard/ResultsCard";
 import { useDashboard } from "@/components/dashboard/DashboardProvider";
 
 export default function AskPage() {
@@ -11,7 +9,6 @@ export default function AskPage() {
     upload,
     dashboardItems,
     visibleActiveItem,
-    visibleMetadata,
     setHistoryFilter,
   } = useDashboard();
 
@@ -19,9 +16,9 @@ export default function AskPage() {
     <div className="pb-10">
       <section className="mx-auto flex max-w-7xl flex-col gap-3 px-6 pt-8 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Ask AI</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">VisoAI</h1>
           <p className="mt-1 text-sm text-slate-400">
-            Ask questions across extracted document text, summaries, and detected details.
+            Ask about MandVision or search across your processed documents.
           </p>
         </div>
         <Link
@@ -38,17 +35,6 @@ export default function AskPage() {
         onSelectItem={upload.selectHistoryItem}
         onFilterTermChange={setHistoryFilter}
       />
-
-      <section className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-2">
-        <MetadataCard
-          metadata={visibleActiveItem ?? visibleMetadata}
-          fileName={upload.file?.name}
-          fileSize={upload.file?.size}
-          stage={upload.stage}
-          progressLabel={upload.progressLabel}
-        />
-        <ResultsCard result={visibleActiveItem} />
-      </section>
     </div>
   );
 }

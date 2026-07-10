@@ -10,7 +10,7 @@ const navItems = [
   { href: "/", label: "Dashboard", icon: BarChart3 },
   { href: "/upload", label: "Upload", icon: Upload },
   { href: "/library", label: "Library", icon: Images },
-  { href: "/ask", label: "Ask AI", icon: Bot },
+  { href: "/ask", label: "VisoAI", icon: Bot },
 ];
 
 export function DashboardHeader() {

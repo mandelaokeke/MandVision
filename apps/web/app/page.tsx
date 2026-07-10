@@ -19,7 +19,7 @@ const actionCards = [
   },
   {
     href: "/ask",
-    title: "Ask AI",
+    title: "VisoAI",
     icon: Bot,
   },
 ];
