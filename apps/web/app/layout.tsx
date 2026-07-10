@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardProvider } from "@/components/dashboard/DashboardProvider";
+import { Footer } from "@/components/dashboard/Footer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,6 +36,7 @@ export default function RootLayout({
             <DashboardHeader />
             {children}
           </main>
+          <Footer />
         </DashboardProvider>
       </body>
     </html>

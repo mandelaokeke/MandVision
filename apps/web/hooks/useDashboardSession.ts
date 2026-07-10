@@ -1,12 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  confirmForgotPasswordWithCognito,
+  confirmSignUpWithCognito,
+  deleteCognitoUser,
+  forgotPasswordWithCognito,
+  isCognitoConfigured,
+  signInWithCognito,
+  signOutWithCognito,
+  signUpWithCognito,
+  type CognitoSession,
+} from "@/lib/cognito";
 
 export type DashboardUser = {
   id: string;
   username: string;
   name: string;
   email: string;
+  accessToken?: string;
 };
 
 const SESSION_STORAGE_KEY = "mandvision.dashboardUser";
@@ -35,6 +47,7 @@ export function useDashboardSession() {
           parsedUser.username ||
           parsedUser.email?.split("@")[0] ||
           parsedUser.id,
+        accessToken: parsedUser.accessToken,
       };
     } catch (error) {
       console.error("Could not load dashboard session", error);
@@ -55,41 +68,209 @@ export function useDashboardSession() {
     }
   }, [user]);
 
-  function signIn({
+  const [authStatus, setAuthStatus] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+  async function signUp({
     username,
     email,
+    password,
+  }: {
+    username: string;
+    email: string;
+    password: string;
+  }) {
+    setAuthLoading(true);
+    setAuthError("");
+    setAuthStatus("");
+
+    try {
+      const normalizedUsername = username.trim().toLowerCase();
+      const normalizedEmail = email.trim().toLowerCase();
+
+      await signUpWithCognito({
+        username: normalizedUsername,
+        email: normalizedEmail,
+        password,
+      });
+
+      setAuthStatus("Check your email for the confirmation code.");
+      return true;
+    } catch (error) {
+      setAuthError(getAuthErrorMessage(error));
+      return false;
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function confirmSignUp({
+    username,
+    code,
+  }: {
+    username: string;
+    code: string;
+  }) {
+    setAuthLoading(true);
+    setAuthError("");
+    setAuthStatus("");
+
+    try {
+      await confirmSignUpWithCognito({
+        username: username.trim().toLowerCase(),
+        code: code.trim(),
+      });
+
+      setAuthStatus("Account confirmed. You can sign in now.");
+      return true;
+    } catch (error) {
+      setAuthError(getAuthErrorMessage(error));
+      return false;
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function signIn({
+    username,
+    email,
+    password,
   }: {
     username: string;
     email?: string;
     password: string;
   }) {
+    setAuthLoading(true);
+    setAuthError("");
+    setAuthStatus("");
+
+    try {
     const normalizedUsername = username.trim().toLowerCase();
     const normalizedEmail = email?.trim().toLowerCase() || "";
     const displayName = username.trim() || normalizedEmail.split("@")[0];
 
-    if (!normalizedUsername) return;
+    if (!normalizedUsername) return false;
+      const session = await signInWithCognito({
+        username: normalizedUsername,
+        password,
+      });
 
-    setUser({
-      id: normalizedUsername,
-      username: normalizedUsername,
-      email: normalizedEmail,
-      name: displayName,
-    });
+      setUser(buildDashboardUser(normalizedUsername, normalizedEmail, displayName, session));
+      setAuthStatus("Signed in.");
+      return true;
+    } catch (error) {
+      setAuthError(getAuthErrorMessage(error));
+      return false;
+    } finally {
+      setAuthLoading(false);
+    }
   }
 
-  function signOut() {
+  async function sendPasswordReset(username: string) {
+    setAuthLoading(true);
+    setAuthError("");
+    setAuthStatus("");
+
+    try {
+      await forgotPasswordWithCognito(username.trim().toLowerCase());
+      setAuthStatus("Password reset code sent. Check your email.");
+      return true;
+    } catch (error) {
+      setAuthError(getAuthErrorMessage(error));
+      return false;
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function confirmPasswordReset({
+    username,
+    code,
+    newPassword,
+  }: {
+    username: string;
+    code: string;
+    newPassword: string;
+  }) {
+    setAuthLoading(true);
+    setAuthError("");
+    setAuthStatus("");
+
+    try {
+      await confirmForgotPasswordWithCognito({
+        username: username.trim().toLowerCase(),
+        code: code.trim(),
+        newPassword,
+      });
+      setAuthStatus("Password updated. You can sign in now.");
+      return true;
+    } catch (error) {
+      setAuthError(getAuthErrorMessage(error));
+      return false;
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function signOut() {
+    try {
+      await signOutWithCognito(user?.accessToken);
+    } catch (error) {
+      console.error("Could not sign out of Cognito", error);
+    }
+
     setUser(null);
   }
 
-  function deleteAccount() {
-    setUser(null);
+  async function deleteAccount() {
+    setAuthLoading(true);
+    setAuthError("");
+
+    try {
+      await deleteCognitoUser(user?.accessToken);
+      setUser(null);
+      setAuthStatus("Account deleted.");
+    } catch (error) {
+      setAuthError(getAuthErrorMessage(error));
+    } finally {
+      setAuthLoading(false);
+    }
   }
 
   return {
     user,
     signedIn: Boolean(user),
+    cognitoConfigured: isCognitoConfigured(),
+    authLoading,
+    authStatus,
+    authError,
+    signUp,
+    confirmSignUp,
     signIn,
+    sendPasswordReset,
+    confirmPasswordReset,
     signOut,
     deleteAccount,
   };
+}
+
+function buildDashboardUser(
+  normalizedUsername: string,
+  normalizedEmail: string,
+  displayName: string,
+  session: CognitoSession
+): DashboardUser {
+  return {
+    id: normalizedUsername,
+    username: normalizedUsername,
+    email: normalizedEmail,
+    name: displayName || normalizedUsername,
+    accessToken: session.accessToken,
+  };
+}
+
+function getAuthErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Authentication request failed. Please try again.";
 }

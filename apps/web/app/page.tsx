@@ -32,7 +32,15 @@ export default function DashboardPage() {
     <div className="pb-10">
       <AuthPanel
         user={session.user}
+        cognitoConfigured={session.cognitoConfigured}
+        loading={session.authLoading}
+        status={session.authStatus}
+        error={session.authError}
+        onSignUp={session.signUp}
+        onConfirmSignUp={session.confirmSignUp}
         onSignIn={session.signIn}
+        onSendPasswordReset={session.sendPasswordReset}
+        onConfirmPasswordReset={session.confirmPasswordReset}
         onSignOut={session.signOut}
         onDeleteAccount={session.deleteAccount}
       />
