@@ -13,6 +13,8 @@ export function PreviewCard({
   historicalSelected = false,
   previewLoading = false,
   mediaType,
+  fileType,
+  textPreview,
 }: {
   fileName?: string;
   previewUrl: string | null;
@@ -22,8 +24,12 @@ export function PreviewCard({
   historicalSelected?: boolean;
   previewLoading?: boolean;
   mediaType?: "image" | "document" | "unknown";
+  fileType?: string;
+  textPreview?: string;
 }) {
   const isDocument = mediaType === "document";
+  const isPdf =
+    fileType === "application/pdf" || fileName?.toLowerCase().endsWith(".pdf");
 
   return (
     <Card className="rounded-2xl border-white/10 bg-[#0d131c] text-white shadow-2xl shadow-black/20">
@@ -38,20 +44,20 @@ export function PreviewCard({
 
       <CardContent>
         <div className="overflow-hidden rounded-xl border border-white/10 bg-black/30">
-          {previewUrl ? (
+          {previewUrl && isPdf ? (
+            <iframe
+              src={previewUrl}
+              title={fileName ? `${fileName} preview` : "PDF preview"}
+              className="h-80 w-full bg-white"
+            />
+          ) : previewUrl && !isDocument ? (
             <img
               src={previewUrl}
               alt="Selected upload preview"
               className="h-80 w-full object-contain bg-black/40"
             />
           ) : isDocument ? (
-            <div className="flex h-80 flex-col items-center justify-center px-8 text-center text-slate-400">
-              <FileText className="mb-4 h-12 w-12 text-emerald-300" />
-              <p className="font-semibold text-slate-200">Document selected</p>
-              <p className="mt-2 text-sm text-slate-500">
-                MandVision will extract searchable text after upload.
-              </p>
-            </div>
+            <DocumentFace fileName={fileName} textPreview={textPreview} />
           ) : historicalSelected ? (
             <div className="flex h-80 flex-col items-center justify-center px-8 text-center text-slate-400">
               <p className="font-semibold text-slate-200">
@@ -73,5 +79,47 @@ export function PreviewCard({
         <ProcessingTimeline stage={stage} uploadedAt={uploadedAt} />
       </CardContent>
     </Card>
+  );
+}
+
+function DocumentFace({
+  fileName,
+  textPreview,
+}: {
+  fileName?: string;
+  textPreview?: string;
+}) {
+  const previewLines = textPreview
+    ? textPreview.split(/\s+/).join(" ").slice(0, 520)
+    : "";
+
+  return (
+    <div className="flex h-80 items-center justify-center bg-slate-950/80 p-5">
+      <div className="h-full w-full max-w-sm overflow-hidden rounded-lg border border-slate-200/15 bg-slate-100 p-5 text-slate-900 shadow-2xl shadow-black/40">
+        <div className="mb-4 flex items-center gap-3 border-b border-slate-300 pb-3">
+          <FileText className="h-7 w-7 shrink-0 text-emerald-600" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">
+              {fileName || "Document preview"}
+            </p>
+            <p className="text-xs text-slate-500">Extracted document face</p>
+          </div>
+        </div>
+
+        {previewLines ? (
+          <p className="text-sm leading-6 text-slate-700">{previewLines}</p>
+        ) : (
+          <div className="space-y-3">
+            <div className="h-3 w-4/5 rounded bg-slate-300" />
+            <div className="h-3 w-full rounded bg-slate-300" />
+            <div className="h-3 w-11/12 rounded bg-slate-300" />
+            <div className="h-3 w-3/4 rounded bg-slate-300" />
+            <p className="pt-5 text-center text-sm font-medium text-slate-500">
+              MandVision will extract searchable text after upload.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { HistoryCard } from "@/components/dashboard/HistoryCard";
 import { MetadataCard } from "@/components/dashboard/MetadataCard";
+import { PreviewCard } from "@/components/dashboard/PreviewCard";
 import { ResultsCard } from "@/components/dashboard/ResultsCard";
 import { useDashboard } from "@/components/dashboard/DashboardProvider";
 
@@ -56,6 +57,30 @@ export default function LibraryPage() {
             View Details
           </button>
         </div>
+
+        <PreviewCard
+          fileName={
+            visibleActiveItem?.originalFileName ||
+            visibleMetadata?.fileName ||
+            upload.file?.name
+          }
+          previewUrl={upload.previewUrl}
+          stage={upload.stage}
+          progressLabel={visibleActiveItem?.status || upload.progressLabel}
+          uploadedAt={visibleActiveItem?.uploadedAt || upload.metadata?.uploadedAt}
+          historicalSelected={Boolean(visibleActiveItem)}
+          previewLoading={upload.fetchingPreview}
+          mediaType={
+            (visibleActiveItem ?? visibleMetadata)?.mediaType ??
+            (upload.file?.type.startsWith("image/")
+              ? "image"
+              : upload.file
+              ? "document"
+              : undefined)
+          }
+          fileType={(visibleActiveItem ?? visibleMetadata)?.fileType ?? upload.file?.type}
+          textPreview={visibleActiveItem?.textPreview}
+        />
 
         <MetadataCard
           metadata={visibleActiveItem ?? visibleMetadata}

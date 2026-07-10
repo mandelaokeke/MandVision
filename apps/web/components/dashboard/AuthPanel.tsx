@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, LogIn, LogOut, UserRound } from "lucide-react";
+import { KeyRound, LogIn, LogOut, Trash2, UserRound } from "lucide-react";
 import { useState } from "react";
 import type { DashboardUser } from "@/hooks/useDashboardSession";
 
@@ -8,10 +8,12 @@ export function AuthPanel({
   user,
   onSignIn,
   onSignOut,
+  onDeleteAccount,
 }: {
   user: DashboardUser | null;
   onSignIn: (values: { username: string; email?: string; password: string }) => void;
   onSignOut: () => void;
+  onDeleteAccount: () => void;
 }) {
   const [mode, setMode] = useState<"signup" | "signin" | "forgot">("signup");
   const [username, setUsername] = useState("");
@@ -37,14 +39,28 @@ export function AuthPanel({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onSignOut}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign Out
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm("Delete this local MandVision profile from this browser?")) {
+                  onDeleteAccount();
+                }
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-2 text-sm font-medium text-red-200 transition hover:bg-red-400/20"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete Account
+            </button>
+          </div>
         </div>
       </section>
     );

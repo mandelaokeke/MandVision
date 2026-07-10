@@ -10,19 +10,16 @@ const actionCards = [
   {
     href: "/upload",
     title: "Upload Media",
-    description: "Add images, PDFs, DOC, or DOCX files for processing.",
     icon: Upload,
   },
   {
     href: "/library",
     title: "Manage Library",
-    description: "Review history, favorites, filters, exports, and details.",
     icon: Images,
   },
   {
     href: "/ask",
     title: "Ask AI",
-    description: "Summarize documents and ask questions with source snippets.",
     icon: Bot,
   },
 ];
@@ -37,12 +34,18 @@ export default function DashboardPage() {
         user={session.user}
         onSignIn={session.signIn}
         onSignOut={session.signOut}
+        onDeleteAccount={session.deleteAccount}
       />
 
       <AnalyticsDashboard items={dashboardItems} onLabelSelect={setHistoryFilter} />
 
       <section className="mx-auto grid max-w-7xl gap-6 px-6 py-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(360px,0.45fr)]">
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-white/10 bg-[#0d131c] p-5">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-white">Quick Links</h2>
+            <p className="text-sm text-slate-400">Jump into the main MandVision workflows.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
           {actionCards.map((card) => {
             const Icon = card.icon;
 
@@ -50,16 +53,15 @@ export default function DashboardPage() {
               <Link
                 key={card.href}
                 href={card.href}
-                className="rounded-2xl border border-white/10 bg-[#0d131c] p-5 transition hover:border-emerald-400/30 hover:bg-emerald-400/[0.04]"
+                title={card.title}
+                className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-emerald-300 transition hover:border-emerald-400/50 hover:bg-emerald-400/20"
               >
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-emerald-300">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <h2 className="text-lg font-semibold text-white">{card.title}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-400">{card.description}</p>
+                <Icon className="h-5 w-5" />
+                <span className="sr-only">{card.title}</span>
               </Link>
             );
           })}
+          </div>
         </div>
 
         <section className="rounded-2xl border border-white/10 bg-[#0d131c] p-5">

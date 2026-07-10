@@ -43,6 +43,8 @@ export default function UploadPage() {
           historicalSelected={Boolean(upload.selectedHistoryItem)}
           previewLoading={upload.fetchingPreview}
           mediaType={mediaType}
+          fileType={(visibleActiveItem ?? visibleMetadata)?.fileType ?? upload.file?.type}
+          textPreview={visibleActiveItem?.textPreview}
         />
 
         <StatusAlert stage={upload.stage} status={upload.status} />

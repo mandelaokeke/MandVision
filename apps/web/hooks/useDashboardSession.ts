@@ -81,10 +81,15 @@ export function useDashboardSession() {
     setUser(null);
   }
 
+  function deleteAccount() {
+    setUser(null);
+  }
+
   return {
     user,
     signedIn: Boolean(user),
     signIn,
     signOut,
+    deleteAccount,
   };
 }
