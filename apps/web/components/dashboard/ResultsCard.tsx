@@ -29,18 +29,32 @@ export function ResultsCard({ result }: { result: MediaResult | null }) {
 
       <CardContent>
         {isDocument ? (
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-xs text-sky-200">
-                {result?.extractionStatus || "DOCUMENT"}
-              </span>
-              {typeof result?.wordCount === "number" ? (
-                <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-slate-300">
-                  {result.wordCount} words
+          <div className="space-y-5">
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Document processing</p>
+                <p className="mt-1 text-xs text-slate-500">Extraction status and indexed text count.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-xs font-medium text-sky-200">
+                  {result?.extractionStatus || "DOCUMENT"}
                 </span>
-              ) : null}
+                {typeof result?.wordCount === "number" ? (
+                  <span className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1 text-xs text-slate-300">
+                    {result.wordCount} words
+                  </span>
+                ) : null}
+              </div>
             </div>
-            <DocumentInsightsPanel insights={result?.documentInsights} />
+
+            <section className="space-y-3">
+              <div>
+                <h3 className="text-base font-semibold text-white">Detected Details</h3>
+                <p className="mt-1 text-sm text-slate-500">Emails, IDs, dates, and other structured findings.</p>
+              </div>
+              <DocumentInsightsPanel insights={result?.documentInsights} />
+            </section>
+
             <DocumentTextPanel item={result} />
           </div>
         ) : labels.length > 0 ? (

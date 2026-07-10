@@ -27,7 +27,7 @@ export function DocumentInsightsPanel({
   }
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2">
       {groups.map((group) =>
         group.values.length > 0 ? (
           <InsightGroup
@@ -57,14 +57,14 @@ function InsightGroup({
         <Icon className="h-3.5 w-3.5 text-emerald-300" />
         {label}
       </div>
-      <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
         {values.map((value) => (
-          <p
+          <span
             key={`${label}-${value}`}
-            className="break-words rounded-lg border border-white/5 bg-slate-950/50 px-3 py-2 text-sm text-slate-200"
+            className="max-w-full rounded-lg border border-white/5 bg-slate-950/50 px-3 py-2 text-sm leading-5 text-slate-200"
           >
             {value}
-          </p>
+          </span>
         ))}
       </div>
     </div>
