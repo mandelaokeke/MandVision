@@ -236,7 +236,11 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
       URL.revokeObjectURL(previewUrl);
     }
 
-    setPreviewUrl(selectedFile.type.startsWith("image/") ? URL.createObjectURL(selectedFile) : null);
+    setPreviewUrl(
+      selectedFile.type.startsWith("image/") || selectedFile.type === "application/pdf"
+        ? URL.createObjectURL(selectedFile)
+        : null
+    );
     setStage("selected");
     setStatus(
       selectedFile.type.startsWith("image/")

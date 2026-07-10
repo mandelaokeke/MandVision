@@ -57,7 +57,7 @@ export function PreviewCard({
               className="h-80 w-full object-contain bg-black/40"
             />
           ) : isDocument ? (
-            <DocumentFace fileName={fileName} textPreview={textPreview} />
+            <DocumentFace fileName={fileName} textPreview={textPreview} fileType={fileType} />
           ) : historicalSelected ? (
             <div className="flex h-80 flex-col items-center justify-center px-8 text-center text-slate-400">
               <p className="font-semibold text-slate-200">
@@ -85,13 +85,20 @@ export function PreviewCard({
 function DocumentFace({
   fileName,
   textPreview,
+  fileType,
 }: {
   fileName?: string;
   textPreview?: string;
+  fileType?: string;
 }) {
   const previewLines = textPreview
     ? textPreview.split(/\s+/).join(" ").slice(0, 520)
     : "";
+  const isWordDocument =
+    fileType === "application/msword" ||
+    fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    fileName?.toLowerCase().endsWith(".doc") ||
+    fileName?.toLowerCase().endsWith(".docx");
 
   return (
     <div className="flex h-80 items-center justify-center bg-slate-950/80 p-5">
@@ -102,7 +109,9 @@ function DocumentFace({
             <p className="truncate text-sm font-semibold">
               {fileName || "Document preview"}
             </p>
-            <p className="text-xs text-slate-500">Extracted document face</p>
+            <p className="text-xs text-slate-500">
+              {isWordDocument ? "Word document face" : "Extracted document face"}
+            </p>
           </div>
         </div>
 
