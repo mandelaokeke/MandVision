@@ -18,7 +18,7 @@ export default function LibraryPage() {
   } = useDashboard();
 
   return (
-    <div className="mx-auto grid max-w-7xl items-start gap-8 px-6 py-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.6fr)]">
+    <div className="mx-auto grid max-w-[92rem] items-start gap-8 px-6 py-8 xl:grid-cols-[minmax(420px,0.85fr)_minmax(0,1.15fr)]">
       <section className="min-w-0 space-y-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white">Library</h1>
@@ -46,7 +46,7 @@ export default function LibraryPage() {
         />
       </section>
 
-      <aside className="min-w-0 space-y-6 lg:sticky lg:top-6">
+      <aside className="min-w-0 space-y-6 xl:sticky xl:top-6">
         <div className="flex justify-end">
           <button
             type="button"

@@ -68,7 +68,6 @@ export function HistoryCard({
   filterTerm: string;
   onFilterTermChange: (term: string) => void;
 }) {
-  const [showAll, setShowAll] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
@@ -171,8 +170,6 @@ export function HistoryCard({
     dateFilter !== "all" ||
     favoriteFilter !== "all" ||
     minimumConfidence > 0;
-  const visibleItems = filterTerm || hasAdvancedFilters || showAll ? filteredItems : filteredItems.slice(0, 3);
-  const hiddenCount = Math.max(filteredItems.length - visibleItems.length, 0);
   const totalCount = items.length;
   const processedCount = items.filter((item) => isProcessed(item)).length;
   const pendingCount = Math.max(totalCount - processedCount, 0);
@@ -189,7 +186,6 @@ export function HistoryCard({
     setDateFilter("all");
     setFavoriteFilter("all");
     setMinimumConfidence(0);
-    setShowAll(false);
   }
 
   function exportFilteredItems() {
@@ -257,7 +253,6 @@ export function HistoryCard({
             value={filterTerm}
             onChange={(event) => {
               onFilterTermChange(event.target.value);
-              setShowAll(true);
             }}
             placeholder="Search by file name, label, or extracted document text..."
             className="flex h-10 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 pl-9 text-sm text-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40"
@@ -412,10 +407,10 @@ export function HistoryCard({
 
       <div className="space-y-4 p-6 pt-0">
         {filteredItems.length > 0 ? (
-          <>
+          <div className="max-h-[760px] overflow-y-auto pr-2 [scrollbar-color:rgba(52,211,153,0.45)_rgba(15,23,42,0.8)] [scrollbar-width:thin]">
             {viewMode === "list" ? (
               <div className="space-y-4">
-                {visibleItems.map((item) => (
+                {filteredItems.map((item) => (
                   <HistoryListItem
                     key={item.fileId}
                     item={item}
@@ -432,7 +427,7 @@ export function HistoryCard({
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {visibleItems.map((item) => (
+                {filteredItems.map((item) => (
                   <HistoryGalleryItem
                     key={item.fileId}
                     item={item}
@@ -448,18 +443,7 @@ export function HistoryCard({
                 ))}
               </div>
             )}
-            <>
-              {hiddenCount > 0 || showAll ? (
-                <button
-                  type="button"
-                  onClick={() => setShowAll((current) => !current)}
-                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-medium text-emerald-300 transition hover:border-emerald-400/30 hover:bg-emerald-400/[0.04]"
-                >
-                  {showAll ? "Show less" : `Show all ${filteredItems.length} uploads`}
-                </button>
-              ) : null}
-            </>
-          </>
+          </div>
         ) : (
           <div className="rounded-xl border border-white/10 bg-black/20 p-5 text-sm text-slate-400">
             {items.length > 0 ? "No uploads match the current filters." : "No uploads found yet."}
