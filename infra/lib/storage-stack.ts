@@ -29,7 +29,7 @@ export class StorageStack extends cdk.Stack {
       autoDeleteObjects: true,
       cors: [
         {
-          allowedOrigins: ["http://localhost:3000"],
+          allowedOrigins: ["*"],
           allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.GET],
           allowedHeaders: ["*"],
         },
