@@ -47,7 +47,7 @@ export function DocumentTextPanel({
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+    <div className="document-text-panel overflow-hidden rounded-2xl border border-white/10 bg-black/20">
       <div className="flex flex-col gap-4 border-b border-white/10 p-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h3 className="text-base font-semibold text-white">{title}</h3>
@@ -67,7 +67,7 @@ export function DocumentTextPanel({
               onChange={(event) => setQuery(event.target.value)}
               disabled={!extractedText}
               placeholder="Find text..."
-              className="h-10 w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 pl-9 text-sm text-slate-100 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 disabled:cursor-not-allowed disabled:opacity-40 sm:w-64"
+              className="document-text-search h-10 w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 pl-9 text-sm text-slate-100 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 disabled:cursor-not-allowed disabled:opacity-40 sm:w-64"
             />
           </div>
           <button
@@ -90,9 +90,9 @@ export function DocumentTextPanel({
           </button>
         </div>
       </div>
-      <div className={`${maxHeightClass} overflow-auto bg-[#090f16] p-5`}>
+      <div className={`document-text-viewer ${maxHeightClass} overflow-auto bg-[#090f16] p-5`}>
         {query.trim() ? (
-          <div className="whitespace-pre-wrap rounded-xl border border-white/10 bg-[#0f1722] p-5 text-base leading-8 text-slate-200">
+          <div className="document-text-block whitespace-pre-wrap rounded-xl border border-white/10 bg-[#0f1722] p-5 text-base leading-8 text-slate-200">
             {segments.map((segment, index) =>
                 segment.match ? (
                   <mark
@@ -111,14 +111,14 @@ export function DocumentTextPanel({
             {paragraphs.map((paragraph, index) => (
               <p
                 key={`${paragraph}-${index}`}
-                className="rounded-xl border border-white/10 bg-[#0f1722] p-5 text-base leading-8 text-slate-200"
+                className="document-text-block rounded-xl border border-white/10 bg-[#0f1722] p-5 text-base leading-8 text-slate-200"
               >
                 {paragraph}
               </p>
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border border-white/10 bg-[#0f1722] p-5 text-sm text-slate-400">
+          <div className="document-text-block rounded-xl border border-white/10 bg-[#0f1722] p-5 text-sm text-slate-400">
             No extracted text available yet.
           </div>
         )}

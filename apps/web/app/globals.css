@@ -23,6 +23,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
 }
 
 :root[data-theme="dark"] {
@@ -101,8 +102,16 @@ body {
   background-color: #dbe5f0 !important;
 }
 
+:root[data-theme="light"] [class*="bg-slate-950"] {
+  background-color: #eef4f8 !important;
+}
+
 :root[data-theme="light"] [class*="bg-[#0d1722]"] {
   background-color: #ffffff !important;
+}
+
+:root[data-theme="light"] [class*="border-white/5"] {
+  border-color: #dbe3ee !important;
 }
 
 :root[data-theme="light"] [class*="shadow-black"] {
@@ -113,6 +122,30 @@ body {
 :root[data-theme="light"] textarea,
 :root[data-theme="light"] select {
   color: #0f172a;
+}
+
+:root[data-theme="light"] .document-text-panel {
+  background: #ffffff !important;
+}
+
+:root[data-theme="light"] .document-text-search {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] .document-text-viewer {
+  background: #f3f7fb !important;
+}
+
+:root[data-theme="light"] .document-text-block {
+  background: #ffffff !important;
+  border-color: #cbd8e6 !important;
+  color: #1e2f47 !important;
+}
+
+:root[data-theme="light"] mark {
+  background-color: #fde68a !important;
+  color: #78350f !important;
 }
 
 :root[data-theme="light"] .ai-chat-scroll {
