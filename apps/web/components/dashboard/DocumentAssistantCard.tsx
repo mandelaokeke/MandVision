@@ -295,7 +295,7 @@ export function DocumentAssistantCard({
         </div>
 
         <div className="mt-5">
-          <div className="max-h-[540px] space-y-4 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-4">
+          <div className="ai-chat-scroll max-h-[540px] space-y-4 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-4">
             {messages.map((message) => (
               <ChatBubble
                 key={message.id}
@@ -307,8 +307,14 @@ export function DocumentAssistantCard({
               />
             ))}
             {askingBackend ? (
-              <div className="max-w-[82%] rounded-2xl rounded-bl-sm border border-sky-300/20 bg-sky-300/10 p-4 text-sm text-sky-100">
-                VisoAI is reading your processed documents...
+              <div className="ai-assistant-row flex items-start gap-3">
+                <div className="ai-assistant-avatar flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-300/30 bg-sky-300/10 text-sky-100">
+                  <Bot className="h-4 w-4" />
+                </div>
+                <div className="ai-assistant-bubble max-w-[82%] rounded-2xl rounded-tl-md border border-sky-300/20 bg-[#0d1722] p-4 text-sm text-slate-100">
+                  <div className="mb-2 text-xs font-medium text-sky-200">VisoAI</div>
+                  Reading your processed documents...
+                </div>
               </div>
             ) : null}
           </div>
@@ -328,7 +334,7 @@ function ChatBubble({
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[82%] rounded-2xl rounded-br-sm bg-emerald-400/15 px-4 py-3 text-sm text-emerald-50">
+        <div className="ai-user-bubble max-w-[82%] rounded-2xl rounded-tr-md bg-emerald-400/15 px-4 py-3 text-sm text-emerald-50">
           {message.text}
         </div>
       </div>
@@ -338,65 +344,57 @@ function ChatBubble({
   const answer = message.answer;
 
   return (
-    <div className="max-w-[88%] rounded-2xl rounded-bl-sm border border-sky-300/20 bg-[#0d1722] p-4 text-sm text-slate-100">
-      {answer ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-2 rounded-full border border-sky-300/30 bg-sky-300/10 px-3 py-1 text-xs font-medium text-sky-100">
-            {answer.mode === "ai" ? (
-              <>
-                <Sparkles className="h-3.5 w-3.5" />
-                AI answer
-              </>
-            ) : answer.mode === "fallback" ? (
-              <>
-                <FileSearch className="h-3.5 w-3.5" />
-                Smart document search
-              </>
-            ) : answer.mode === "app" ? (
-              <>
-                <Bot className="h-3.5 w-3.5" />
-                App guide
-              </>
-            ) : (
-              <>
-                <Bot className="h-3.5 w-3.5" />
-                VisoAI
-              </>
-            )}
-          </span>
+    <div className="ai-assistant-row flex items-start gap-3">
+      <div className="ai-assistant-avatar flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-300/30 bg-sky-300/10 text-sky-100">
+        <Bot className="h-4 w-4" />
+      </div>
+      <div className="ai-assistant-bubble max-w-[88%] rounded-2xl rounded-tl-md border border-sky-300/20 bg-[#0d1722] p-4 text-sm text-slate-100">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="ai-assistant-name text-xs font-semibold text-sky-200">VisoAI</span>
+          {answer?.mode === "ai" ? (
+            <span className="ai-answer-badge inline-flex items-center gap-1.5 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-2 py-0.5 text-[11px] font-medium text-emerald-100">
+              <Sparkles className="h-3 w-3" />
+              Document answer
+            </span>
+          ) : answer?.mode === "fallback" ? (
+            <span className="ai-answer-badge inline-flex items-center gap-1.5 rounded-full border border-sky-300/25 bg-sky-300/10 px-2 py-0.5 text-[11px] font-medium text-sky-100">
+              <FileSearch className="h-3 w-3" />
+              Smart search
+            </span>
+          ) : null}
         </div>
-      ) : null}
-      <div className="leading-6">{message.text}</div>
-      {answer?.aiError ? (
-        <div className="mt-3 flex gap-2 rounded-lg border border-amber-300/20 bg-amber-300/10 p-3 text-xs text-amber-100">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>{answer.aiError}</span>
-        </div>
-      ) : null}
-      {answer?.matches.length ? (
-        <div className="mt-4 border-t border-white/10 pt-3">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/60">
-            Source snippets
-          </p>
-          <div className="space-y-2">
-            {answer.matches.slice(0, 3).map((match) => (
-              <button
-                key={`source-${message.id}-${match.item.fileId}`}
-                type="button"
-                onClick={() => onSelectItem(match.item)}
-                className="w-full rounded-lg bg-black/20 p-3 text-left transition hover:bg-sky-300/10"
-              >
-                <p className="mb-1 truncate text-xs font-medium text-white/80">
-                  {match.item.originalFileName || match.item.fileId}
-                </p>
-                <p className="line-clamp-2 text-xs leading-5 text-white/65">
-                  {match.snippets[0] || match.item.textPreview || "Source document matched this question."}
-                </p>
-              </button>
-            ))}
+        <div className="leading-6">{message.text}</div>
+        {answer?.aiError ? (
+          <div className="mt-3 flex gap-2 rounded-lg border border-amber-300/20 bg-amber-300/10 p-3 text-xs text-amber-100">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>{answer.aiError}</span>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+        {answer?.matches.length ? (
+          <div className="ai-source-panel mt-4 border-t border-white/10 pt-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/60">
+              Source snippets
+            </p>
+            <div className="space-y-2">
+              {answer.matches.slice(0, 3).map((match) => (
+                <button
+                  key={`source-${message.id}-${match.item.fileId}`}
+                  type="button"
+                  onClick={() => onSelectItem(match.item)}
+                  className="ai-source-card w-full rounded-lg bg-black/20 p-3 text-left transition hover:bg-sky-300/10"
+                >
+                  <p className="mb-1 truncate text-xs font-medium text-white/80">
+                    {match.item.originalFileName || match.item.fileId}
+                  </p>
+                  <p className="line-clamp-2 text-xs leading-5 text-white/65">
+                    {match.snippets[0] || match.item.textPreview || "Source document matched this question."}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
