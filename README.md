@@ -25,6 +25,8 @@ The app is built as a production-inspired AWS event-driven pipeline with a Next.
 
 ## Architecture
 
+![MandVision AWS architecture diagram](docs/architecture.svg)
+
 ```mermaid
 flowchart LR
     User["User"] --> Web["Next.js Web App<br/>Vercel"]

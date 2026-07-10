@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400" role="img" aria-labelledby="title desc">
+  <title id="title">MandVision AWS architecture</title>
+  <desc id="desc">Static architecture diagram for MandVision showing browser upload, API Gateway, S3, SQS, Lambda processing, Rekognition, document extraction, DynamoDB, Cognito, Secrets Manager, and OpenAI.</desc>
+  <defs>
+    <style>
+      .bg { fill: #07111f; }
+      .panel { fill: #0d1a2b; stroke: #1f3550; stroke-width: 2; }
+      .box { fill: #101f33; stroke: #38d996; stroke-width: 3; }
+      .box2 { fill: #101f33; stroke: #8bd3ff; stroke-width: 3; }
+      .box3 { fill: #101f33; stroke: #f7c948; stroke-width: 3; }
+      .text { fill: #f5f9ff; font-family: Arial, Helvetica, sans-serif; font-size: 28px; font-weight: 700; }
+      .small { fill: #9fb3cc; font-family: Arial, Helvetica, sans-serif; font-size: 19px; }
+      .label { fill: #38d996; font-family: Arial, Helvetica, sans-serif; font-size: 17px; font-weight: 700; letter-spacing: 2px; }
+      .arrow { stroke: #a7b8cc; stroke-width: 4; fill: none; marker-end: url(#arrowhead); }
+      .dashed { stroke-dasharray: 10 10; }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#a7b8cc" />
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1000" height="1400" />
+  <rect class="panel" x="40" y="40" width="920" height="1320" rx="32" />
+
+  <text x="90" y="105" class="label">MANDVISION</text>
+  <text x="90" y="150" class="text" font-size="38">Serverless Media Intelligence</text>
+  <text x="90" y="185" class="small">S3 pre-signed uploads, SQS-buffered Lambda processing,</text>
+  <text x="90" y="214" class="small">Rekognition analysis, DynamoDB metadata, Cognito, and VisoAI.</text>
+
+  <rect class="box2" x="120" y="285" width="300" height="110" rx="20" />
+  <text x="155" y="330" class="text">User Browser</text>
+  <text x="155" y="363" class="small">Uploads and views results</text>
+
+  <rect class="box2" x="580" y="285" width="300" height="110" rx="20" />
+  <text x="615" y="330" class="text">Next.js App</text>
+  <text x="615" y="363" class="small">Vercel frontend</text>
+
+  <rect class="box2" x="120" y="475" width="300" height="110" rx="20" />
+  <text x="155" y="520" class="text">API Gateway</text>
+  <text x="155" y="553" class="small">Upload, library, VisoAI APIs</text>
+
+  <rect class="box2" x="580" y="475" width="300" height="110" rx="20" />
+  <text x="615" y="520" class="text">Cognito</text>
+  <text x="615" y="553" class="small">Sign up, sign in, recovery</text>
+
+  <rect class="box" x="120" y="665" width="300" height="110" rx="20" />
+  <text x="155" y="710" class="text">Presign Lambda</text>
+  <text x="155" y="743" class="small">Short-lived S3 PUT URL</text>
+
+  <rect class="box" x="580" y="665" width="300" height="110" rx="20" />
+  <text x="615" y="710" class="text">S3 Ingest</text>
+  <text x="615" y="743" class="small">uploads/{fileId}-{name}</text>
+
+  <rect class="box3" x="120" y="855" width="300" height="110" rx="20" />
+  <text x="155" y="900" class="text">SQS Queue</text>
+  <text x="155" y="933" class="small">Buffer, retry, DLQ routing</text>
+
+  <rect class="box3" x="580" y="855" width="300" height="110" rx="20" />
+  <text x="615" y="900" class="text">Processor Lambda</text>
+  <text x="615" y="933" class="small">Image or document path</text>
+
+  <rect class="box" x="120" y="1045" width="300" height="110" rx="20" />
+  <text x="155" y="1090" class="text">Rekognition</text>
+  <text x="155" y="1123" class="small">Image labels</text>
+
+  <rect class="box" x="580" y="1045" width="300" height="110" rx="20" />
+  <text x="615" y="1090" class="text">PDF/DOCX Extract</text>
+  <text x="615" y="1123" class="small">pdf-parse + mammoth</text>
+
+  <rect class="box" x="120" y="1235" width="300" height="90" rx="20" />
+  <text x="155" y="1278" class="text">DynamoDB</text>
+  <text x="155" y="1308" class="small">Metadata and results</text>
+
+  <rect class="box2" x="580" y="1235" width="300" height="90" rx="20" />
+  <text x="615" y="1278" class="text">VisoAI</text>
+  <text x="615" y="1308" class="small">Secrets Manager + OpenAI</text>
+
+  <path class="arrow" d="M420 340 H580" />
+  <path class="arrow" d="M730 395 C730 440 270 430 270 475" />
+  <path class="arrow" d="M420 530 H580" />
+  <path class="arrow" d="M270 585 V665" />
+  <path class="arrow" d="M420 720 H580" />
+  <path class="arrow" d="M730 775 C730 820 270 810 270 855" />
+  <path class="arrow" d="M420 910 H580" />
+  <path class="arrow" d="M730 965 C730 1010 270 1000 270 1045" />
+  <path class="arrow" d="M730 965 V1045" />
+  <path class="arrow" d="M270 1155 V1235" />
+  <path class="arrow" d="M730 1155 C730 1200 270 1190 270 1235" />
+  <path class="arrow" d="M420 1280 H580" />
+</svg>
