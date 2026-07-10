@@ -206,10 +206,10 @@ export function HistoryCard({
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#0d131c] text-white shadow-2xl shadow-black/20">
-      <div className="space-y-4 p-6">
-        <div className="flex items-start gap-4">
-          <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-emerald-300">
+    <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[#0d131c] text-white shadow-2xl shadow-black/20">
+      <div className="space-y-4 p-4 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-emerald-300 sm:shrink-0">
             <Images className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
@@ -218,7 +218,7 @@ export function HistoryCard({
               {totalCount} files • {processedCount} processed • {pendingCount} pending • {favoriteCount} favorites
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {onRefresh ? (
               <button
                 type="button"
@@ -259,8 +259,8 @@ export function HistoryCard({
           />
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-          <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"
               onClick={() => setFiltersOpen((current) => !current)}
@@ -272,13 +272,13 @@ export function HistoryCard({
                 {filtersOpen ? "Hide" : "Show"}
               </span>
             </button>
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
               {onReprocessPending ? (
                 <button
                   type="button"
                   onClick={() => onReprocessPending(filteredPendingItems)}
                   disabled={!filteredPendingItems.length || reprocessingPending}
-                  className="inline-flex items-center gap-2 rounded-lg border border-amber-300/30 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex min-w-0 items-center justify-center gap-2 rounded-lg border border-amber-300/30 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <RotateCcw className={`h-3.5 w-3.5 ${reprocessingPending ? "animate-spin" : ""}`} />
                   Reprocess Pending
@@ -288,7 +288,7 @@ export function HistoryCard({
                 type="button"
                 onClick={exportFilteredItems}
                 disabled={!filteredItems.length}
-                className="inline-flex items-center gap-2 rounded-lg border border-emerald-400/30 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex min-w-0 items-center justify-center gap-2 rounded-lg border border-emerald-400/30 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Download className="h-3.5 w-3.5" />
                 Export CSV
@@ -297,7 +297,7 @@ export function HistoryCard({
                 type="button"
                 onClick={resetFilters}
                 disabled={!filterTerm && !hasAdvancedFilters}
-                className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-emerald-400/30 hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex min-w-0 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-emerald-400/30 hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Reset
@@ -405,9 +405,9 @@ export function HistoryCard({
         </div>
       </div>
 
-      <div className="space-y-4 p-6 pt-0">
+      <div className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
         {filteredItems.length > 0 ? (
-          <div className="max-h-[760px] overflow-y-auto pr-2 [scrollbar-color:rgba(52,211,153,0.45)_rgba(15,23,42,0.8)] [scrollbar-width:thin]">
+          <div className="max-h-[760px] overflow-y-auto pr-0 [scrollbar-color:rgba(52,211,153,0.45)_rgba(15,23,42,0.8)] [scrollbar-width:thin] sm:pr-2">
             {viewMode === "list" ? (
               <div className="space-y-4">
                 {filteredItems.map((item) => (
@@ -506,7 +506,7 @@ function HistoryListItem({
 
   return (
     <div
-      className={`flex items-stretch gap-2 rounded-xl border p-2 transition hover:border-emerald-400/30 hover:bg-emerald-400/[0.03] ${
+      className={`flex min-w-0 flex-col gap-2 rounded-xl border p-2 transition hover:border-emerald-400/30 hover:bg-emerald-400/[0.03] sm:flex-row sm:items-stretch ${
         selected ? "border-emerald-400/50 bg-emerald-400/[0.06]" : "border-white/10 bg-black/20"
       }`}
     >
@@ -515,9 +515,9 @@ function HistoryListItem({
         onClick={() => onSelectItem(item)}
         className="min-w-0 flex-1 rounded-lg p-2 text-left"
       >
-        <div className="mb-3 flex items-start justify-between gap-4">
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
-            <p className="truncate font-semibold text-slate-100">
+            <p className="truncate font-semibold text-slate-100 sm:max-w-full">
               {item.originalFileName || item.fileId}
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -527,7 +527,7 @@ function HistoryListItem({
             </div>
           </div>
 
-          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(item.status)}`}>
+          <span className={`w-fit rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(item.status)}`}>
             {item.status || "UNKNOWN"}
           </span>
         </div>
@@ -802,7 +802,7 @@ function HistoryItemActions({
   }
 
   return (
-    <div className={horizontal ? "flex flex-1 gap-2" : "flex w-11 shrink-0 flex-col gap-2"}>
+    <div className={horizontal ? "flex flex-1 gap-2" : "grid grid-cols-3 gap-2 sm:flex sm:w-11 sm:shrink-0 sm:flex-col"}>
       {onReprocessItem && canReprocess ? (
         <button
           type="button"

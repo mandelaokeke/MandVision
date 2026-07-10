@@ -211,8 +211,8 @@ export function DocumentAssistantCard({
   }
 
   return (
-    <section className="mx-auto max-w-7xl px-6 pt-6">
-      <div className="rounded-2xl border border-white/10 bg-[#0d131c] p-6 text-white shadow-2xl shadow-black/20">
+    <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
+      <div className="rounded-2xl border border-white/10 bg-[#0d131c] p-4 text-white shadow-2xl shadow-black/20 sm:p-6">
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-sky-300/30 bg-sky-300/10 text-sky-200">
@@ -231,67 +231,6 @@ export function DocumentAssistantCard({
           <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300">
             {searchableDocuments.length} searchable document{searchableDocuments.length === 1 ? "" : "s"}
           </div>
-        </div>
-
-        <form
-          className="flex flex-col gap-3 md:flex-row"
-          onSubmit={(event) => {
-            event.preventDefault();
-            askQuestion();
-          }}
-        >
-          <div className="relative min-w-0 flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-            <input
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Message VisoAI..."
-              className="h-11 w-full rounded-lg border border-white/10 bg-black/20 px-3 pl-9 text-sm text-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/40"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={!question.trim()}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-sky-300/30 bg-sky-300/10 px-4 text-sm font-medium text-sky-200 transition hover:bg-sky-300/20 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Send className="h-4 w-4" />
-            {askingBackend ? "Thinking..." : "Send"}
-          </button>
-        </form>
-
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {selectedDocument ? (
-            <>
-              <button
-                type="button"
-                onClick={summarizeSelectedDocument}
-                disabled={askingBackend}
-                className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1.5 text-xs font-medium text-emerald-100 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Summarize this document
-              </button>
-              <label className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={searchSelectedOnly}
-                  onChange={(event) => setSearchSelectedOnly(event.target.checked)}
-                  className="h-3.5 w-3.5 accent-sky-300"
-                />
-                Search selected document only
-              </label>
-            </>
-          ) : null}
-          {promptSuggestions.map((quickQuestion) => (
-            <button
-              key={quickQuestion}
-              type="button"
-              onClick={() => askQuestion(quickQuestion)}
-              className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-sky-300/40 hover:bg-sky-300/10 hover:text-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {quickQuestion}
-            </button>
-          ))}
         </div>
 
         <div className="mt-5">
@@ -317,6 +256,67 @@ export function DocumentAssistantCard({
                 </div>
               </div>
             ) : null}
+            <div className="border-t border-white/10 pt-4">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {selectedDocument ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={summarizeSelectedDocument}
+                      disabled={askingBackend}
+                      className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1.5 text-xs font-medium text-emerald-100 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Summarize this document
+                    </button>
+                    <label className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-300">
+                      <input
+                        type="checkbox"
+                        checked={searchSelectedOnly}
+                        onChange={(event) => setSearchSelectedOnly(event.target.checked)}
+                        className="h-3.5 w-3.5 accent-sky-300"
+                      />
+                      Search selected only
+                    </label>
+                  </>
+                ) : null}
+                {promptSuggestions.map((quickQuestion) => (
+                  <button
+                    key={quickQuestion}
+                    type="button"
+                    onClick={() => askQuestion(quickQuestion)}
+                    className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-sky-300/40 hover:bg-sky-300/10 hover:text-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {quickQuestion}
+                  </button>
+                ))}
+              </div>
+              <form
+                className="flex flex-col gap-3 sm:flex-row"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  askQuestion();
+                }}
+              >
+                <div className="relative min-w-0 flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <input
+                    value={question}
+                    onChange={(event) => setQuestion(event.target.value)}
+                    placeholder="Message VisoAI..."
+                    className="h-11 w-full rounded-lg border border-white/10 bg-black/20 px-3 pl-9 text-sm text-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/40"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!question.trim()}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-sky-300/30 bg-sky-300/10 px-4 text-sm font-medium text-sky-200 transition hover:bg-sky-300/20 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Send className="h-4 w-4" />
+                  {askingBackend ? "Thinking..." : "Send"}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </div>
