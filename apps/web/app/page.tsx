@@ -24,6 +24,21 @@ const actionCards = [
   },
 ];
 
+const faqs = [
+  {
+    question: "What can I upload?",
+    answer: "Images, PDFs, DOC, and DOCX files.",
+  },
+  {
+    question: "Where do processed files go?",
+    answer: "Library keeps previews, filters, favorites, and downloads.",
+  },
+  {
+    question: "What does VisoAI do?",
+    answer: "It chats, summarizes, searches, and compares processed documents.",
+  },
+];
+
 export default function DashboardPage() {
   const { session, dashboardItems, setHistoryFilter } = useDashboard();
   const recentItems = dashboardItems.slice(0, 4);
@@ -47,28 +62,42 @@ export default function DashboardPage() {
 
       <AnalyticsDashboard items={dashboardItems} onLabelSelect={setHistoryFilter} />
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-6 py-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(360px,0.45fr)]">
+      <section className="mx-auto grid max-w-7xl gap-5 px-6 py-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(360px,0.45fr)]">
         <div className="rounded-2xl border border-white/10 bg-[#0d131c] p-5">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-white">Quick Links</h2>
-            <p className="text-sm text-slate-400">Jump into the main MandVision workflows.</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-          {actionCards.map((card) => {
-            const Icon = card.icon;
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Quick Links</h2>
+              <p className="text-sm text-slate-400">Jump into the main MandVision workflows.</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {actionCards.map((card) => {
+                const Icon = card.icon;
 
-            return (
-              <Link
-                key={card.href}
-                href={card.href}
-                title={card.title}
-                className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-emerald-300 transition hover:border-emerald-400/50 hover:bg-emerald-400/20"
+                return (
+                  <Link
+                    key={card.href}
+                    href={card.href}
+                    title={card.title}
+                    className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-emerald-300 transition hover:border-emerald-400/50 hover:bg-emerald-400/20"
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="sr-only">{card.title}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            {faqs.map((item) => (
+              <div
+                key={item.question}
+                className="rounded-xl border border-white/10 bg-black/20 p-4"
               >
-                <Icon className="h-5 w-5" />
-                <span className="sr-only">{card.title}</span>
-              </Link>
-            );
-          })}
+                <p className="text-sm font-semibold text-slate-100">{item.question}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">{item.answer}</p>
+              </div>
+            ))}
           </div>
         </div>
 

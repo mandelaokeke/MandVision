@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, Bot, Images, Sparkles, Upload } from "lucide-react";
+import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: BarChart3 },
@@ -65,6 +66,7 @@ export function DashboardHeader() {
             <Upload className="h-4 w-4" />
             Upload New
           </Link>
+          <ThemeToggle />
         </div>
       </div>
     </header>

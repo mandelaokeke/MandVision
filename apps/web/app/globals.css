@@ -24,3 +24,59 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+:root[data-theme="dark"] {
+  --background: #070b10;
+  --foreground: #ffffff;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --background: #f6f8fb;
+  --foreground: #0f172a;
+  color-scheme: light;
+}
+
+:root[data-theme="light"] body {
+  background: #f6f8fb;
+  color: #0f172a;
+}
+
+:root[data-theme="light"] [class*="bg-[#070b10]"],
+:root[data-theme="light"] [class*="bg-[#0d131c]"] {
+  background-color: #ffffff !important;
+}
+
+:root[data-theme="light"] [class*="bg-black/20"],
+:root[data-theme="light"] [class*="bg-white/[0.03]"] {
+  background-color: #f8fafc !important;
+}
+
+:root[data-theme="light"] [class*="border-white/10"] {
+  border-color: #dbe3ee !important;
+}
+
+:root[data-theme="light"] .text-white,
+:root[data-theme="light"] .text-slate-100 {
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] .text-slate-200,
+:root[data-theme="light"] .text-slate-300 {
+  color: #334155 !important;
+}
+
+:root[data-theme="light"] .text-slate-400,
+:root[data-theme="light"] .text-slate-500 {
+  color: #64748b !important;
+}
+
+:root[data-theme="light"] [class*="shadow-black"] {
+  box-shadow: 0 18px 45px rgb(15 23 42 / 0.08) !important;
+}
+
+:root[data-theme="light"] input,
+:root[data-theme="light"] textarea,
+:root[data-theme="light"] select {
+  color: #0f172a;
+}

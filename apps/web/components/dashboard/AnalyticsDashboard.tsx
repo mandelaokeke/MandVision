@@ -9,6 +9,7 @@ import {
   Star,
 } from "lucide-react";
 import type { ComponentType } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { MediaResult } from "@/hooks/useUpload";
 
@@ -30,13 +31,15 @@ export function AnalyticsDashboard({
   items: MediaResult[];
   onLabelSelect?: (label: string) => void;
 }) {
+  const [showAllLabels, setShowAllLabels] = useState(false);
   const analytics = buildAnalytics(items);
   const maxLabelCount = Math.max(...analytics.topLabels.map((label) => label.count), 1);
   const maxActivityCount = Math.max(...analytics.activity.map((point) => point.count), 1);
   const hasData = analytics.totalFiles > 0;
+  const visibleLabels = showAllLabels ? analytics.topLabels : analytics.topLabels.slice(0, 5);
 
   return (
-    <section className="mx-auto max-w-7xl space-y-6 px-6 pt-8">
+    <section className="mx-auto max-w-7xl space-y-5 px-6 pt-8">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-300/80">
@@ -86,9 +89,10 @@ export function AnalyticsDashboard({
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
         <Card className="rounded-2xl border-white/10 bg-[#0d131c] text-white shadow-2xl shadow-black/20">
-          <CardHeader className="flex flex-row items-start gap-4 space-y-0">
+          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-3">
+            <div className="flex min-w-0 gap-4">
             <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-emerald-300">
               <BarChart3 className="h-5 w-5" />
             </div>
@@ -98,16 +102,26 @@ export function AnalyticsDashboard({
                 Most common Rekognition labels across your uploads
               </p>
             </div>
+            </div>
+            {analytics.topLabels.length > 5 ? (
+              <button
+                type="button"
+                onClick={() => setShowAllLabels((current) => !current)}
+                className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-emerald-400/30 hover:text-emerald-200"
+              >
+                {showAllLabels ? "View less" : "View more"}
+              </button>
+            ) : null}
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {analytics.topLabels.length > 0 ? (
-              <div className="space-y-3">
-                {analytics.topLabels.map((label) => (
+              <div className={`${showAllLabels ? "max-h-56 overflow-y-auto pr-2" : ""} space-y-1.5`}>
+                {visibleLabels.map((label) => (
                   <button
                     type="button"
                     key={label.name}
                     onClick={() => onLabelSelect?.(label.name)}
-                    className="grid w-full grid-cols-[110px_1fr_auto] items-center gap-3 rounded-lg p-2 text-left text-sm transition hover:bg-emerald-400/[0.04]"
+                    className="grid w-full grid-cols-[110px_1fr_auto] items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-emerald-400/[0.04]"
                   >
                     <span className="truncate font-medium text-slate-300">{label.name}</span>
                     <div className="h-3 overflow-hidden rounded-full bg-slate-900">
@@ -129,23 +143,23 @@ export function AnalyticsDashboard({
         </Card>
 
         <Card className="rounded-2xl border-white/10 bg-[#0d131c] text-white shadow-2xl shadow-black/20">
-          <CardHeader className="flex flex-row items-start gap-4 space-y-0">
+          <CardHeader className="flex flex-row items-start gap-4 space-y-0 pb-3">
             <div className="rounded-xl border border-sky-400/30 bg-sky-400/10 p-3 text-sky-300">
               <CalendarDays className="h-5 w-5" />
             </div>
             <div>
-              <CardTitle className="text-xl">Recent Activity</CardTitle>
+              <CardTitle className="text-xl">7-Day Activity</CardTitle>
               <p className="text-sm text-slate-400">
-                Upload volume over the last 7 days
+                Recent upload volume
               </p>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {hasData ? (
-              <div className="flex h-44 items-end gap-3 rounded-xl border border-white/10 bg-black/20 p-4">
+              <div className="flex h-32 items-end gap-3 rounded-xl border border-white/10 bg-black/20 p-4">
                 {analytics.activity.map((point) => (
                   <div key={point.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                    <div className="flex h-28 w-full items-end">
+                    <div className="flex h-16 w-full items-end">
                       <div
                         className="w-full rounded-t-md bg-emerald-400/80"
                         style={{
