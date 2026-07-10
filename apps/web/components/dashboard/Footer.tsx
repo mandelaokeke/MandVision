@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Mail } from "lucide-react";
 
 const footerLinks = [
   {
@@ -15,6 +15,11 @@ const footerLinks = [
     href: "https://github.com/mandelaokeke/MandVision",
     label: "Project",
     icon: ExternalLink,
+  },
+  {
+    href: "mailto:mandelaokeke@yahoo.com",
+    label: "Email",
+    icon: Mail,
   },
 ];
 
