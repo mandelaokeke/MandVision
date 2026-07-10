@@ -7,7 +7,7 @@ const footerLinks = [
     icon: ExternalLink,
   },
   {
-    href: "https://www.linkedin.com/in/mandelaokeke",
+    href: "https://www.linkedin.com/in/mandela-jude-okeke/",
     label: "LinkedIn",
     icon: ExternalLink,
   },
