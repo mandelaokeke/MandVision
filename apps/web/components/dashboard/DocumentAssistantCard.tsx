@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Bot, FileSearch, Search, Sparkles } from "lucide-react";
+import { AlertTriangle, Bot, FileSearch, Search, Send, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { MediaResult } from "@/hooks/useUpload";
 import { getExtractedText } from "@/lib/export";
@@ -19,10 +19,17 @@ type AssistantAnswer = {
   matches: AnswerMatch[];
 };
 
+type ChatMessage = {
+  id: string;
+  role: "assistant" | "user";
+  text: string;
+  answer?: AssistantAnswer;
+};
+
 const quickQuestions = [
-  "What can VisoAI answer?",
-  "How do I upload files?",
-  "How do I manage uploads?",
+  "How are you?",
+  "What can VisoAI help with?",
+  "Compare two documents",
   "Which documents mention an email?",
 ];
 
@@ -38,10 +45,21 @@ export function DocumentAssistantCard({
   onFilterTermChange: (term: string) => void;
 }) {
   const [question, setQuestion] = useState("");
-  const [submittedQuestion, setSubmittedQuestion] = useState("");
   const [searchSelectedOnly, setSearchSelectedOnly] = useState(false);
-  const [backendAnswer, setBackendAnswer] = useState<AssistantAnswer | null>(null);
-  const [backendError, setBackendError] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: "welcome",
+      role: "assistant",
+      text: "Hi, I’m VisoAI. I can chat with you, explain how MandVision works, and answer questions about your processed documents. How can I help you today?",
+      answer: {
+        question: "welcome",
+        summary:
+          "Hi, I’m VisoAI. I can chat with you, explain how MandVision works, and answer questions about your processed documents. How can I help you today?",
+        mode: "chat",
+        matches: [],
+      },
+    },
+  ]);
   const [askingBackend, setAskingBackend] = useState(false);
   const documents = useMemo(
     () =>
@@ -69,25 +87,24 @@ export function DocumentAssistantCard({
     () => Array.from(new Set([...suggestedQuestions, ...quickQuestions])).slice(0, 6),
     [suggestedQuestions]
   );
-  const answer = useMemo(
-    () => buildAnswer(submittedQuestion, searchableDocuments),
-    [submittedQuestion, searchableDocuments]
-  );
-  const visibleAnswer =
-    backendAnswer?.question === submittedQuestion ? backendAnswer : answer;
 
   function askQuestion(nextQuestion = question) {
     const cleanQuestion = nextQuestion.trim();
     if (!cleanQuestion) return;
 
-    setQuestion(cleanQuestion);
-    setSubmittedQuestion(cleanQuestion);
-    setBackendAnswer(null);
-    setBackendError("");
+    setQuestion("");
+    setMessages((currentMessages) => [
+      ...currentMessages,
+      {
+        id: `user-${Date.now()}`,
+        role: "user",
+        text: cleanQuestion,
+      },
+    ]);
 
-    const appAnswer = buildAppAnswer(cleanQuestion);
-    if (appAnswer) {
-      setBackendAnswer(appAnswer);
+    const instantAnswer = buildConversationalAnswer(cleanQuestion);
+    if (instantAnswer) {
+      addAssistantMessage(instantAnswer);
       return;
     }
 
@@ -99,17 +116,37 @@ export function DocumentAssistantCard({
 
     const cleanQuestion = `Summarize ${selectedDocument.originalFileName || "this document"}`;
     setSearchSelectedOnly(true);
-    setQuestion(cleanQuestion);
-    setSubmittedQuestion(cleanQuestion);
-    setBackendAnswer(null);
-    setBackendError("");
+    setQuestion("");
+    setMessages((currentMessages) => [
+      ...currentMessages,
+      {
+        id: `user-${Date.now()}`,
+        role: "user",
+        text: cleanQuestion,
+      },
+    ]);
     void askBackend(cleanQuestion, [selectedDocument]);
+  }
+
+  function addAssistantMessage(answer: AssistantAnswer) {
+    setMessages((currentMessages) => [
+      ...currentMessages,
+      {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        text: answer.summary,
+        answer,
+      },
+    ]);
   }
 
   async function askBackend(nextQuestion: string, scopedDocuments: MediaResult[]) {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) return;
+      if (!apiUrl) {
+        addAssistantMessage(buildAnswer(nextQuestion, scopedDocuments, true));
+        return;
+      }
 
       setAskingBackend(true);
 
@@ -123,7 +160,10 @@ export function DocumentAssistantCard({
       });
 
       if (!response.ok) {
-        setBackendError("AI is unavailable right now, so MandVision is showing a smart search answer.");
+        addAssistantMessage({
+          ...buildAnswer(nextQuestion, scopedDocuments, true),
+          aiError: "AI is unavailable right now, so I’m showing a smart document-search answer.",
+        });
         return;
       }
 
@@ -152,17 +192,19 @@ export function DocumentAssistantCard({
           })
           .filter((match): match is AnswerMatch => Boolean(match)) || [];
 
-      setBackendAnswer({
+      addAssistantMessage({
         question: nextQuestion,
         summary: data.answer || buildAnswer(nextQuestion, scopedDocuments).summary,
         mode: data.mode,
         aiError: data.aiError,
         matches,
       });
-      setBackendError(data.aiError || "");
     } catch (error) {
       console.error("Could not ask document endpoint", error);
-      setBackendError("AI is unavailable right now, so MandVision is showing a smart search answer.");
+      addAssistantMessage({
+        ...buildAnswer(nextQuestion, scopedDocuments, true),
+        aiError: "AI is unavailable right now, so I’m showing a smart document-search answer.",
+      });
     } finally {
       setAskingBackend(false);
     }
@@ -182,7 +224,7 @@ export function DocumentAssistantCard({
               </p>
               <h2 className="mt-1 text-xl font-semibold tracking-tight">VisoAI</h2>
               <p className="mt-1 text-sm text-slate-400">
-                Ask about the app, or get quick answers from processed documents.
+                Chat naturally, ask about MandVision, or compare and search processed documents.
               </p>
             </div>
           </div>
@@ -203,7 +245,7 @@ export function DocumentAssistantCard({
             <input
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Ask VisoAI about the app, summaries, emails, dates, or document details..."
+              placeholder="Message VisoAI..."
               className="h-11 w-full rounded-lg border border-white/10 bg-black/20 px-3 pl-9 text-sm text-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/40"
             />
           </div>
@@ -212,8 +254,8 @@ export function DocumentAssistantCard({
             disabled={!question.trim()}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-sky-300/30 bg-sky-300/10 px-4 text-sm font-medium text-sky-200 transition hover:bg-sky-300/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Sparkles className="h-4 w-4" />
-            {askingBackend ? "Asking..." : "Ask"}
+            <Send className="h-4 w-4" />
+            {askingBackend ? "Thinking..." : "Send"}
           </button>
         </form>
 
@@ -253,130 +295,134 @@ export function DocumentAssistantCard({
         </div>
 
         <div className="mt-5">
-          {!submittedQuestion ? (
-            <div className="rounded-xl border border-white/10 bg-black/20 p-5 text-sm text-slate-400">
-              {documents.length
-                ? selectedDocument
-                  ? "Ask VisoAI about the selected document, or search across all processed documents."
-                  : "Ask VisoAI how MandVision works, or ask about dates, emails, summaries, and details inside your documents."
-                : "Ask VisoAI how MandVision works, or upload a PDF/DOCX to start asking about document content."}
-            </div>
-          ) : visibleAnswer.summary || visibleAnswer.matches.length > 0 ? (
-            <div className="space-y-4">
-              <div
-                className={`rounded-xl border p-4 text-sm ${
-                  visibleAnswer.mode === "ai"
-                    ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-50"
-                    : visibleAnswer.mode === "app"
-                      ? "border-sky-300/20 bg-sky-300/10 text-sky-100"
-                    : "border-sky-300/20 bg-sky-300/10 text-sky-100"
-                }`}
-              >
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span
-                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${
-                      visibleAnswer.mode === "ai"
-                        ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-100"
-                        : visibleAnswer.mode === "app"
-                          ? "border-sky-300/30 bg-sky-300/10 text-sky-100"
-                        : "border-sky-300/30 bg-sky-300/10 text-sky-100"
-                    }`}
-                  >
-                    {visibleAnswer.mode === "ai" ? (
-                      <>
-                        <Sparkles className="h-3.5 w-3.5" />
-                        AI answer
-                      </>
-                    ) : visibleAnswer.mode === "app" ? (
-                      <>
-                        <Bot className="h-3.5 w-3.5" />
-                        App guide
-                      </>
-                    ) : (
-                      <>
-                        <FileSearch className="h-3.5 w-3.5" />
-                        Smart search answer
-                      </>
-                    )}
-                  </span>
-                  {askingBackend ? (
-                    <span className="text-xs text-slate-300">Checking AI...</span>
-                  ) : null}
-                </div>
-                <div>{visibleAnswer.summary}</div>
-                {backendError || visibleAnswer.aiError ? (
-                  <div className="mt-3 flex gap-2 rounded-lg border border-amber-300/20 bg-amber-300/10 p-3 text-xs text-amber-100">
-                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    <span>{backendError || visibleAnswer.aiError}</span>
-                  </div>
-                ) : null}
-                {visibleAnswer.matches.length > 0 ? (
-                  <div className="mt-4 border-t border-white/10 pt-3">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/60">
-                      Source snippets
-                    </p>
-                    <div className="space-y-2">
-                      {visibleAnswer.matches.slice(0, 3).map((match) => (
-                        <div key={`source-${match.item.fileId}`} className="rounded-lg bg-black/20 p-3">
-                          <p className="mb-1 truncate text-xs font-medium text-white/80">
-                            {match.item.originalFileName || match.item.fileId}
-                          </p>
-                          <p className="line-clamp-2 text-xs leading-5 text-white/65">
-                            {match.snippets[0] || match.item.textPreview || "Source document matched this question."}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+          <div className="max-h-[540px] space-y-4 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-4">
+            {messages.map((message) => (
+              <ChatBubble
+                key={message.id}
+                message={message}
+                onSelectItem={(item) => {
+                  onSelectItem(item);
+                  onFilterTermChange(item.originalFileName || item.fileId);
+                }}
+              />
+            ))}
+            {askingBackend ? (
+              <div className="max-w-[82%] rounded-2xl rounded-bl-sm border border-sky-300/20 bg-sky-300/10 p-4 text-sm text-sky-100">
+                VisoAI is reading your processed documents...
               </div>
-              {visibleAnswer.matches.length > 0 ? (
-                <div className="grid gap-3 lg:grid-cols-2">
-                  {visibleAnswer.matches.slice(0, 4).map((match) => (
-                  <button
-                    key={match.item.fileId}
-                    type="button"
-                    onClick={() => {
-                      onSelectItem(match.item);
-                      onFilterTermChange(match.item.originalFileName || match.item.fileId);
-                    }}
-                    className="rounded-xl border border-white/10 bg-black/20 p-4 text-left transition hover:border-sky-300/40 hover:bg-sky-300/[0.04]"
-                  >
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-slate-100">
-                          {match.item.originalFileName || match.item.fileId}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {match.item.wordCount || 0} words indexed
-                        </p>
-                      </div>
-                      <FileSearch className="h-4 w-4 shrink-0 text-sky-200" />
-                    </div>
-                    <div className="space-y-2">
-                      {match.snippets.map((snippet) => (
-                        <p
-                          key={`${match.item.fileId}-${snippet}`}
-                          className="line-clamp-2 text-sm leading-5 text-slate-300"
-                        >
-                          {snippet}
-                        </p>
-                      ))}
-                    </div>
-                  </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-white/10 bg-black/20 p-5 text-sm text-slate-400">
-              No document matches found. Try a different keyword, amount, date, email, or file name.
-            </div>
-          )}
+            ) : null}
+          </div>
         </div>
       </div>
     </section>
   );
+}
+
+function ChatBubble({
+  message,
+  onSelectItem,
+}: {
+  message: ChatMessage;
+  onSelectItem: (item: MediaResult) => void;
+}) {
+  if (message.role === "user") {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[82%] rounded-2xl rounded-br-sm bg-emerald-400/15 px-4 py-3 text-sm text-emerald-50">
+          {message.text}
+        </div>
+      </div>
+    );
+  }
+
+  const answer = message.answer;
+
+  return (
+    <div className="max-w-[88%] rounded-2xl rounded-bl-sm border border-sky-300/20 bg-[#0d1722] p-4 text-sm text-slate-100">
+      {answer ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-2 rounded-full border border-sky-300/30 bg-sky-300/10 px-3 py-1 text-xs font-medium text-sky-100">
+            {answer.mode === "ai" ? (
+              <>
+                <Sparkles className="h-3.5 w-3.5" />
+                AI answer
+              </>
+            ) : answer.mode === "fallback" ? (
+              <>
+                <FileSearch className="h-3.5 w-3.5" />
+                Smart document search
+              </>
+            ) : answer.mode === "app" ? (
+              <>
+                <Bot className="h-3.5 w-3.5" />
+                App guide
+              </>
+            ) : (
+              <>
+                <Bot className="h-3.5 w-3.5" />
+                VisoAI
+              </>
+            )}
+          </span>
+        </div>
+      ) : null}
+      <div className="leading-6">{message.text}</div>
+      {answer?.aiError ? (
+        <div className="mt-3 flex gap-2 rounded-lg border border-amber-300/20 bg-amber-300/10 p-3 text-xs text-amber-100">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{answer.aiError}</span>
+        </div>
+      ) : null}
+      {answer?.matches.length ? (
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/60">
+            Source snippets
+          </p>
+          <div className="space-y-2">
+            {answer.matches.slice(0, 3).map((match) => (
+              <button
+                key={`source-${message.id}-${match.item.fileId}`}
+                type="button"
+                onClick={() => onSelectItem(match.item)}
+                className="w-full rounded-lg bg-black/20 p-3 text-left transition hover:bg-sky-300/10"
+              >
+                <p className="mb-1 truncate text-xs font-medium text-white/80">
+                  {match.item.originalFileName || match.item.fileId}
+                </p>
+                <p className="line-clamp-2 text-xs leading-5 text-white/65">
+                  {match.snippets[0] || match.item.textPreview || "Source document matched this question."}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function buildConversationalAnswer(question: string): AssistantAnswer | null {
+  const normalized = question.toLowerCase();
+  const makeAnswer = (summary: string, mode = "chat"): AssistantAnswer => ({
+    question,
+    summary,
+    mode,
+    matches: [],
+  });
+
+  if (/\b(hi|hello|hey|how are you|how's it going|good morning|good afternoon|good evening)\b/.test(normalized)) {
+    return makeAnswer(
+      "I’m doing well, thank you. I’m here to help with MandVision, your uploads, or questions about processed documents. How can I help you today?"
+    );
+  }
+
+  if (/\b(thanks|thank you|appreciate)\b/.test(normalized)) {
+    return makeAnswer(
+      "You’re welcome. I can help you find details in documents, compare uploads, summarize files, or explain how MandVision works. What would you like to do next?"
+    );
+  }
+
+  return buildAppAnswer(question);
 }
 
 function buildSuggestedQuestions(selectedDocument: MediaResult | null) {
@@ -397,7 +443,11 @@ function buildSuggestedQuestions(selectedDocument: MediaResult | null) {
   return Array.from(questions).slice(0, 3);
 }
 
-function buildAnswer(question: string, documents: MediaResult[]): AssistantAnswer {
+function buildAnswer(
+  question: string,
+  documents: MediaResult[],
+  friendlyFallback = false
+): AssistantAnswer {
   const cleanQuestion = question.trim();
   if (!cleanQuestion) {
     return {
@@ -416,7 +466,7 @@ function buildAnswer(question: string, documents: MediaResult[]): AssistantAnswe
 
   return {
     question: cleanQuestion,
-    summary: summarizeAnswer(cleanQuestion, matches, intent),
+    summary: summarizeAnswer(cleanQuestion, matches, intent, friendlyFallback, documents.length),
     matches,
   };
 }
@@ -540,9 +590,19 @@ function getIntentValues(item: MediaResult, intent: ReturnType<typeof getQuestio
 function summarizeAnswer(
   question: string,
   matches: AnswerMatch[],
-  intent: ReturnType<typeof getQuestionIntent>
+  intent: ReturnType<typeof getQuestionIntent>,
+  friendlyFallback = false,
+  documentCount = 0
 ) {
-  if (!matches.length) return `I could not find a match for "${question}" in the extracted documents.`;
+  if (!matches.length) {
+    if (friendlyFallback) {
+      return documentCount
+        ? `I did not find a strong match for "${question}" in the processed documents, but you can ask me to summarize a specific file, compare two document names, or search for dates, emails, IDs, and amounts. How can I help you narrow it down?`
+        : "I can chat with you and explain MandVision now. Once you upload and process PDFs or Word documents, I can also summarize, compare, and answer questions about them. How can I help you today?";
+    }
+
+    return `I could not find a match for "${question}" in the extracted documents.`;
+  }
 
   const topValues = matches.flatMap((match) => getIntentValues(match.item, intent)).slice(0, 4);
 
