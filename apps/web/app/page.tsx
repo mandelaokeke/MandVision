@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Bot, Images, Upload } from "lucide-react";
+import { useState } from "react";
+import { Bot, ChevronDown, Images, Upload } from "lucide-react";
 import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
 import { AuthPanel } from "@/components/dashboard/AuthPanel";
 import { useDashboard } from "@/components/dashboard/DashboardProvider";
@@ -27,21 +28,54 @@ const actionCards = [
 const faqs = [
   {
     question: "What can I upload?",
-    answer: "Images, PDFs, DOC, and DOCX files.",
+    answer:
+      "Images, PDFs, DOC, and DOCX files. Images are analyzed for labels, while documents are extracted into searchable text.",
   },
   {
     question: "Where do processed files go?",
-    answer: "Library keeps previews, filters, favorites, and downloads.",
+    answer:
+      "Everything lands in Library, where you can preview files, filter results, favorite important uploads, export CSVs, download originals, and delete items.",
   },
   {
     question: "What does VisoAI do?",
-    answer: "It chats, summarizes, searches, and compares processed documents.",
+    answer:
+      "VisoAI is the chat shortcut for your processed documents. Ask for summaries, compare documents, search for emails or IDs, or ask how MandVision works.",
+  },
+  {
+    question: "Can I search inside documents?",
+    answer:
+      "Yes. Once a PDF or Word document is processed, MandVision indexes the extracted text so Library search and VisoAI can find details inside it.",
+  },
+  {
+    question: "Can I manage old uploads?",
+    answer:
+      "Yes. Library lets you reprocess pending documents, mark favorites, download originals, export history, and remove uploads you no longer need.",
+  },
+  {
+    question: "Do I need to sign in first?",
+    answer:
+      "You can browse the general dashboard first. Signing in switches MandVision to your own uploads, analytics, and document history.",
   },
 ];
 
 export default function DashboardPage() {
   const { session, dashboardItems, setHistoryFilter } = useDashboard();
   const recentItems = dashboardItems.slice(0, 4);
+  const [expandedFaqs, setExpandedFaqs] = useState<Set<string>>(new Set());
+  const [showAllFaqs, setShowAllFaqs] = useState(false);
+  const visibleFaqs = showAllFaqs ? faqs : faqs.slice(0, 3);
+
+  function toggleFaq(question: string) {
+    setExpandedFaqs((current) => {
+      const next = new Set(current);
+      if (next.has(question)) {
+        next.delete(question);
+      } else {
+        next.add(question);
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="pb-10">
@@ -88,16 +122,53 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
-            {faqs.map((item) => (
-              <div
-                key={item.question}
-                className="rounded-xl border border-white/10 bg-black/20 p-4"
+          <div className="mt-5 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+            {visibleFaqs.map((item, index) => {
+              const expanded = expandedFaqs.has(item.question);
+
+              return (
+                <div
+                  key={item.question}
+                  className={index > 0 ? "border-t border-white/10" : ""}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleFaq(item.question)}
+                    className="flex w-full items-center gap-4 px-4 py-4 text-left transition hover:bg-emerald-400/[0.04]"
+                    aria-expanded={expanded}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-slate-100 sm:text-base">
+                        {item.question}
+                      </span>
+                      <span
+                        className={`mt-1 block text-xs leading-5 text-slate-400 sm:text-sm ${
+                          expanded ? "" : "line-clamp-1"
+                        }`}
+                      >
+                        {item.answer}
+                      </span>
+                    </span>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-300">
+                      <ChevronDown
+                        className={`h-4 w-4 transition ${expanded ? "rotate-180" : ""}`}
+                      />
+                    </span>
+                  </button>
+                </div>
+              );
+            })}
+
+            <div className="relative border-t border-white/10 py-4">
+              <button
+                type="button"
+                onClick={() => setShowAllFaqs((current) => !current)}
+                className="mx-auto flex h-10 min-w-56 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-6 text-sm font-semibold text-slate-200 transition hover:border-emerald-400/30 hover:bg-emerald-400/10 hover:text-emerald-200"
               >
-                <p className="text-sm font-semibold text-slate-100">{item.question}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-400">{item.answer}</p>
-              </div>
-            ))}
+                {showAllFaqs ? "Show less" : `Show ${faqs.length - visibleFaqs.length} more`}
+                <ChevronDown className={`h-4 w-4 transition ${showAllFaqs ? "rotate-180" : ""}`} />
+              </button>
+            </div>
           </div>
         </div>
 
