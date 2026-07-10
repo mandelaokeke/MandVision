@@ -3,9 +3,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { BarChart3, Bot, Images, Menu, Sparkles, Upload, X } from "lucide-react";
+import { BarChart3, Bot, Images, Menu, Upload, X } from "lucide-react";
 import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
 
 const navItems = [
@@ -23,10 +24,21 @@ export function DashboardHeader() {
     <header className="border-b border-white/10 bg-[#070b10]/95 px-4 py-4 backdrop-blur sm:px-6 sm:py-5">
       <div className="mx-auto max-w-7xl">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-400/30 sm:h-11 sm:w-11">
-              <Sparkles className="h-5 w-5" />
-            </div>
+          <Link
+            href="/"
+            className="flex min-w-0 items-center gap-3 rounded-xl transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/50 sm:gap-4"
+            aria-label="Go to MandVision home"
+          >
+            <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-emerald-400/30 sm:h-11 sm:w-11">
+              <Image
+                src="/mandvision-logo.png"
+                alt="MandVision logo"
+                fill
+                sizes="44px"
+                className="object-cover"
+                priority
+              />
+            </span>
 
             <div className="min-w-0">
               <h1 className="truncate text-xl font-bold tracking-tight text-white sm:text-2xl">
@@ -36,7 +48,7 @@ export function DashboardHeader() {
                 AI Image Intelligence Platform
               </p>
             </div>
-          </div>
+          </Link>
 
           <button
             type="button"
