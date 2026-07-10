@@ -87,6 +87,7 @@ export function DocumentAssistantCard({
     () => Array.from(new Set([...suggestedQuestions, ...quickQuestions])).slice(0, 6),
     [suggestedQuestions]
   );
+  const hasUserMessages = messages.some((message) => message.role === "user");
 
   function askQuestion(nextQuestion = question) {
     const cleanQuestion = nextQuestion.trim();
@@ -229,7 +230,7 @@ export function DocumentAssistantCard({
             </div>
           </div>
           <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300">
-            {searchableDocuments.length} searchable document{searchableDocuments.length === 1 ? "" : "s"}
+            VisoAI can read {searchableDocuments.length} doc{searchableDocuments.length === 1 ? "" : "s"}
           </div>
         </div>
 
@@ -260,15 +261,17 @@ export function DocumentAssistantCard({
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 {selectedDocument ? (
                   <>
-                    <button
-                      type="button"
-                      onClick={summarizeSelectedDocument}
-                      disabled={askingBackend}
-                      className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1.5 text-xs font-medium text-emerald-100 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Summarize this document
-                    </button>
+                    {!hasUserMessages ? (
+                      <button
+                        type="button"
+                        onClick={summarizeSelectedDocument}
+                        disabled={askingBackend}
+                        className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1.5 text-xs font-medium text-emerald-100 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Summarize this document
+                      </button>
+                    ) : null}
                     <label className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-300">
                       <input
                         type="checkbox"
@@ -280,16 +283,18 @@ export function DocumentAssistantCard({
                     </label>
                   </>
                 ) : null}
-                {promptSuggestions.map((quickQuestion) => (
-                  <button
-                    key={quickQuestion}
-                    type="button"
-                    onClick={() => askQuestion(quickQuestion)}
-                    className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-sky-300/40 hover:bg-sky-300/10 hover:text-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {quickQuestion}
-                  </button>
-                ))}
+                {!hasUserMessages
+                  ? promptSuggestions.map((quickQuestion) => (
+                      <button
+                        key={quickQuestion}
+                        type="button"
+                        onClick={() => askQuestion(quickQuestion)}
+                        className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-sky-300/40 hover:bg-sky-300/10 hover:text-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {quickQuestion}
+                      </button>
+                    ))
+                  : null}
               </div>
               <form
                 className="flex flex-col gap-3 sm:flex-row"
