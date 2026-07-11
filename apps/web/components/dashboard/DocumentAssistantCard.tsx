@@ -78,8 +78,7 @@ export function DocumentAssistantCard({
     (getExtractedText(selectedItem) || getInsightValues(selectedItem).length > 0)
       ? selectedItem
       : null;
-  const selectedImage =
-    selectedItem?.mediaType === "image" && selectedItem.labels?.length ? selectedItem : null;
+  const selectedImage = selectedItem?.mediaType === "image" ? selectedItem : null;
   const searchableDocuments = useMemo(
     () => (searchSelectedOnly && selectedDocument ? [selectedDocument] : documents),
     [documents, searchSelectedOnly, selectedDocument]
@@ -111,14 +110,14 @@ export function DocumentAssistantCard({
       },
     ]);
 
-    const instantAnswer = buildConversationalAnswer(cleanQuestion);
-    if (instantAnswer) {
-      addAssistantMessage(instantAnswer);
+    if (selectedImage) {
+      addAssistantMessage(buildImageAnswer(cleanQuestion, selectedImage));
       return;
     }
 
-    if (selectedImage) {
-      addAssistantMessage(buildImageAnswer(cleanQuestion, selectedImage));
+    const instantAnswer = buildConversationalAnswer(cleanQuestion);
+    if (instantAnswer) {
+      addAssistantMessage(instantAnswer);
       return;
     }
 
@@ -249,7 +248,9 @@ export function DocumentAssistantCard({
           </div>
           <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300">
             {selectedImage
-              ? `${selectedImage.labels?.length || 0} image labels ready`
+              ? `${selectedImage.labels?.length || 0} image label${
+                  selectedImage.labels?.length === 1 ? "" : "s"
+                } ready`
               : `VisoAI can read ${searchableDocuments.length} doc${
                   searchableDocuments.length === 1 ? "" : "s"
                 }`}
@@ -605,12 +606,21 @@ function buildImageAnswer(question: string, image: MediaResult): AssistantAnswer
   const isPresenceQuestion = /\b(do you see|does|is there|are there|can you see|see|show|contains?|find|identify)\b/.test(normalized);
   const isDescriptionQuestion = /\b(describe|pattern|type|kind|color|wearing|looks like|tell me about)\b/.test(normalized);
   const isRiskQuestion = /\b(blood|weapon|knife|gun|injury|suspicious|danger|hazard|threat|evidence)\b/.test(normalized);
+  const isTextQuestion = /\b(word|words|text|read|writing|letter|letters|says|sign|ocr)\b/.test(normalized);
   let summary: string;
   let snippets: string[] = [];
 
   if (!labels.length) {
     summary =
       "**No image labels available yet.**\n\nSelect a processed image with detected objects, then ask me what appears in it.";
+  } else if (isTextQuestion) {
+    const topObjects = topLabels
+      .map((label) => `- ${label.name}${label.confidence ? ` (${Math.round(label.confidence)}%)` : ""}`)
+      .join("\n");
+    summary =
+      `**I can see the selected image, but I do not have OCR text for it yet.**\n\n` +
+      `MandVision’s current image analysis returns object labels, not readable words from inside the picture.\n\n` +
+      `**Detected image labels:**\n\n${topObjects || "- Not available"}`;
   } else if (matchingLabels.length) {
     const matches = matchingLabels
       .slice(0, 5)
