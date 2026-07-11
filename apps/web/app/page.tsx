@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Bot, Camera, FileSearch, ShieldCheck } from "lucide-react";
 import { AuthPanel } from "@/components/dashboard/AuthPanel";
 import { useDashboard } from "@/components/dashboard/DashboardProvider";
@@ -32,13 +30,6 @@ const useCases = [
 
 export default function DashboardPage() {
   const { session } = useDashboard();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (session.user) {
-      router.replace("/library");
-    }
-  }, [router, session.user]);
 
   return (
     <div className="pb-12">

@@ -149,6 +149,16 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
   }, [history]);
 
   useEffect(() => {
+    if (stage !== "processing" || !activeFileIdRef.current) return;
+
+    const intervalId = window.setInterval(() => {
+      void fetchHistory({ silent: true });
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [stage]);
+
+  useEffect(() => {
     try {
       window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favoriteFileIds));
     } catch (error) {
@@ -627,8 +637,10 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
       return;
     }
 
-    for (let attempt = 1; attempt <= 8; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+    const maxAttempts = 40;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
 
       const response = await fetch(`${apiUrl}/media/${fileId}`);
 
@@ -640,12 +652,14 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
         if (mediaResult.mediaType === "document" && mediaResult.status === "PROCESSED") {
           setStage("complete");
           setStatus("Document text extraction complete.");
+          void fetchPreviewUrl(fileId);
           return;
         }
 
         if (mediaResult.status === "PROCESSED") {
           setStage("complete");
           setStatus("Processing complete. Rekognition labels are ready.");
+          void fetchPreviewUrl(fileId);
           return;
         }
 
@@ -662,11 +676,15 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
         }
       }
 
-      setStatus(`Processing file... checking results (${attempt}/8)`);
+      if (attempt % 3 === 0) {
+        void fetchHistory({ silent: true });
+      }
+
+      setStatus(`Processing file... checking results (${attempt}/${maxAttempts})`);
     }
 
     setStage("processing");
-    setStatus("Still processing. Refresh or upload another file in a moment.");
+    setStatus("Still processing in the background. MandVision will refresh the Library when results are ready, or you can use Reprocess if it stays pending.");
   }
 
   function toggleFavoriteItem(item: MediaResult) {
