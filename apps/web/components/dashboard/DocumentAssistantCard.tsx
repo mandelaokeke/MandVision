@@ -116,14 +116,14 @@ export function DocumentAssistantCard({
       return;
     }
 
-    if (selectedImage) {
-      addAssistantMessage(buildImageAnswer(cleanQuestion, selectedImage));
-      return;
-    }
-
     const appAnswer = buildAppAnswer(cleanQuestion);
     if (appAnswer) {
       addAssistantMessage(appAnswer);
+      return;
+    }
+
+    if (selectedImage) {
+      addAssistantMessage(buildImageAnswer(cleanQuestion, selectedImage));
       return;
     }
 
@@ -566,6 +566,12 @@ function buildSocialAnswer(question: string): AssistantAnswer | null {
     );
   }
 
+  if (/\b(don't|do not|dont|stop|cancel)\b.*\b(process|scan|analyze|analyse|upload)\b/.test(normalized)) {
+    return makeAnswer(
+      "**No problem.**\n\nI won’t start any upload or processing from chat. Processing only happens when you choose a file on the Upload page and press the upload button. If an image is already selected here, I’m only reading the saved detection results."
+    );
+  }
+
   return null;
 }
 
@@ -846,9 +852,9 @@ function buildAppAnswer(question: string): AssistantAnswer | null {
     matches: [],
   });
 
-  if (/\b(visoai|ai|assistant|ask|question|summary|summarize|source|snippet)\b/.test(normalized)) {
+  if (/\b(help|how does this work|how do i use|how to use|what can you do|visoai|ai|assistant|ask|question|summary|summarize|source|snippet)\b/.test(normalized)) {
     return makeAnswer(
-      "**VisoAI answers questions about selected uploads.**\n\n- For images, it reasons from detected object labels.\n- For documents, it searches extracted text for summaries, dates, IDs, emails, and other details."
+      "**Absolutely, here’s the simple version.**\n\n1. Upload an image or document.\n2. Open it from Library.\n3. Ask me normal questions about it.\n\nFor images, I can explain the detected objects in plain English. For documents, I can summarize or search the extracted text. I’ll also tell you when I’m limited, like if OCR or deeper visual reasoning is not available yet."
     );
   }
 
@@ -878,7 +884,7 @@ function buildAppAnswer(question: string): AssistantAnswer | null {
 
   if (/\b(app|mandvision|help|how do i|what can|where do i)\b/.test(normalized)) {
     return makeAnswer(
-      "**MandVision is an evidence intelligence workspace.**\n\n1. Upload an image or document.\n2. Review detected objects or extracted text.\n3. Ask VisoAI focused questions about the selected upload."
+      "**MandVision helps you review uploaded files.**\n\nUpload a file, pick it in Library, then ask me what it shows or what details matter. Think of me as a first-pass review assistant, not a final investigator."
     );
   }
 
