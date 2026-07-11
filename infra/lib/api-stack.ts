@@ -116,7 +116,23 @@ export class ApiStack extends cdk.Stack {
         environment: {
           METADATA_TABLE_NAME: props.metadataTable.tableName,
           OPENAI_API_KEY_SECRET_NAME: openAiSecretName,
-          OPENAI_MODEL: process.env.OPENAI_MODEL || "gpt-5.5",
+          OPENAI_MODEL: process.env.OPENAI_MODEL || "gpt-5.6",
+        },
+      }
+    );
+
+    const askVisionLambda = new lambdaNodejs.NodejsFunction(
+      this,
+      "AskVisionLambda",
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        entry: "../services/ask-vision/src/handler.ts",
+        handler: "main",
+        timeout: cdk.Duration.seconds(30),
+        environment: {
+          METADATA_TABLE_NAME: props.metadataTable.tableName,
+          OPENAI_API_KEY_SECRET_NAME: openAiSecretName,
+          OPENAI_MODEL: process.env.OPENAI_MODEL || "gpt-5.6",
         },
       }
     );
@@ -132,7 +148,10 @@ export class ApiStack extends cdk.Stack {
     props.metadataTable.grantReadWriteData(reprocessMediaLambda);
     props.ingestBucket.grantRead(reprocessMediaLambda);
     props.metadataTable.grantReadData(askDocumentLambda);
+    props.metadataTable.grantReadData(askVisionLambda);
+    props.ingestBucket.grantRead(askVisionLambda);
     openAiApiKeySecret.grantRead(askDocumentLambda);
+    openAiApiKeySecret.grantRead(askVisionLambda);
     reprocessMediaLambda.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["rekognition:DetectLabels"],
@@ -157,6 +176,10 @@ export class ApiStack extends cdk.Stack {
     const documents = api.root.addResource("documents");
     const askDocument = documents.addResource("ask");
     askDocument.addMethod("POST", new apigateway.LambdaIntegration(askDocumentLambda));
+
+    const vision = api.root.addResource("vision");
+    const askVision = vision.addResource("ask");
+    askVision.addMethod("POST", new apigateway.LambdaIntegration(askVisionLambda));
 
     const mediaItem = media.addResource("{fileId}");
     mediaItem.addMethod("GET", new apigateway.LambdaIntegration(getMediaLambda));

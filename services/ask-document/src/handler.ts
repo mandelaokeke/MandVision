@@ -252,7 +252,7 @@ async function askOpenAI(
         Authorization: `Bearer ${openAIKey}`,
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || "gpt-5.5",
+        model: process.env.OPENAI_MODEL || "gpt-5.6",
         input: [
           {
             role: "system",

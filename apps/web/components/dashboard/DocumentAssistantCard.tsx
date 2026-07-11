@@ -123,7 +123,7 @@ export function DocumentAssistantCard({
     }
 
     if (selectedImage) {
-      addAssistantMessage(buildImageAnswer(cleanQuestion, selectedImage));
+      void askVisionBackend(cleanQuestion, selectedImage);
       return;
     }
 
@@ -234,6 +234,62 @@ export function DocumentAssistantCard({
     }
   }
 
+  async function askVisionBackend(nextQuestion: string, image: MediaResult) {
+    const fallbackAnswer = buildImageAnswer(nextQuestion, image);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        addAssistantMessage({
+          ...fallbackAnswer,
+          aiError: "AI vision is unavailable right now, so I’m showing the saved image labels.",
+        });
+        return;
+      }
+
+      setAskingBackend(true);
+
+      const response = await fetch(`${apiUrl}/vision/ask?requestId=${Date.now()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: nextQuestion,
+          fileId: image.fileId,
+        }),
+      });
+
+      if (!response.ok) {
+        addAssistantMessage({
+          ...fallbackAnswer,
+          aiError: "AI vision is unavailable right now, so I’m showing the saved image labels.",
+        });
+        return;
+      }
+
+      const data = (await response.json()) as {
+        answer?: string;
+        mode?: string;
+        aiError?: string;
+      };
+
+      addAssistantMessage({
+        question: nextQuestion,
+        summary: data.answer || fallbackAnswer.summary,
+        mode: data.mode || "vision",
+        aiError: data.aiError,
+        matches: fallbackAnswer.matches,
+      });
+    } catch (error) {
+      console.error("Could not ask vision endpoint", error);
+      addAssistantMessage({
+        ...fallbackAnswer,
+        aiError: "AI vision is unavailable right now, so I’m showing the saved image labels.",
+      });
+    } finally {
+      setAskingBackend(false);
+    }
+  }
+
   return (
     <section className={compact ? "" : "mx-auto max-w-[118rem] px-4 pt-6 sm:px-6"}>
       <div className="rounded-2xl border border-white/10 bg-[#0d131c] p-4 text-white shadow-2xl shadow-black/20 sm:p-6">
@@ -282,7 +338,7 @@ export function DocumentAssistantCard({
                 </div>
                 <div className="ai-assistant-bubble min-w-0 flex-1 rounded-2xl rounded-tl-md border border-sky-300/20 bg-[#0d1722] p-4 text-sm text-slate-100">
                   <div className="mb-2 text-xs font-medium text-sky-200">VisoAI</div>
-                  Reading your processed documents...
+                  {selectedImage ? "Thinking about the selected image..." : "Reading your processed documents..."}
                 </div>
               </div>
             ) : null}
@@ -385,7 +441,12 @@ function ChatBubble({
       <div className="ai-assistant-bubble min-w-0 flex-1 rounded-2xl rounded-tl-md border border-sky-300/20 bg-[#0d1722] p-4 text-sm text-slate-100">
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <span className="ai-assistant-name text-xs font-semibold text-sky-200">VisoAI</span>
-          {answer?.mode === "ai" ? (
+          {answer?.mode === "vision" ? (
+            <span className="ai-answer-badge inline-flex items-center gap-1.5 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-2 py-0.5 text-[11px] font-medium text-emerald-100">
+              <Sparkles className="h-3 w-3" />
+              Vision answer
+            </span>
+          ) : answer?.mode === "ai" ? (
             <span className="ai-answer-badge inline-flex items-center gap-1.5 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-2 py-0.5 text-[11px] font-medium text-emerald-100">
               <Sparkles className="h-3 w-3" />
               Document answer
