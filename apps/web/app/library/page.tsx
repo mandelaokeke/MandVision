@@ -5,8 +5,6 @@ import { HistoryCard } from "@/components/dashboard/HistoryCard";
 import { MetadataCard } from "@/components/dashboard/MetadataCard";
 import { PreviewCard } from "@/components/dashboard/PreviewCard";
 import { ResultsCard } from "@/components/dashboard/ResultsCard";
-import { StatusAlert } from "@/components/dashboard/StatusAlert";
-import { UploadPanel } from "@/components/dashboard/UploadPanel";
 import { useDashboard } from "@/components/dashboard/DashboardProvider";
 
 export default function LibraryPage() {
@@ -19,13 +17,7 @@ export default function LibraryPage() {
     setHistoryFilter,
     setDetailsOpen,
   } = useDashboard();
-  const mediaType =
-    (visibleActiveItem ?? visibleMetadata)?.mediaType ??
-    (upload.file?.type.startsWith("image/")
-      ? "image"
-      : upload.file
-      ? "document"
-      : undefined);
+  const mediaType = (visibleActiveItem ?? visibleMetadata)?.mediaType;
 
   return (
     <div className="mx-auto grid w-full max-w-[92rem] items-start gap-6 overflow-hidden px-4 py-6 sm:px-6 sm:py-8 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
@@ -36,18 +28,9 @@ export default function LibraryPage() {
           </p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">Library</h1>
           <p className="mt-1 text-sm text-slate-400">
-            Upload an image, review detected objects, then ask Viso targeted questions about the selected file.
+            Review processed uploads, inspect detected objects, then ask Viso targeted questions about the selected file.
           </p>
         </div>
-
-        <UploadPanel
-          uploading={upload.uploading}
-          hasFile={Boolean(upload.file)}
-          onFileChange={upload.handleFileChange}
-          onUpload={upload.handleUpload}
-        />
-
-        <StatusAlert stage={upload.stage} status={upload.status} />
 
         <HistoryCard
           items={dashboardItems}

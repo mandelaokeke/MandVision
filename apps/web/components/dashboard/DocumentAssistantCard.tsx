@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Bot, FileSearch, Search, Send, Sparkles } from "lucide-react";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import type { MediaResult } from "@/hooks/useUpload";
 import { getExtractedText } from "@/lib/export";
@@ -52,11 +53,11 @@ export function DocumentAssistantCard({
     {
       id: "welcome",
       role: "assistant",
-      text: "Hi, I’m VisoAI. Select an uploaded image or document, then ask what MandVision detected or what details need review.",
+      text: "**Welcome to VisoAI.**\n\nSelect an uploaded image or document, then ask what MandVision detected or what details need review.",
       answer: {
         question: "welcome",
         summary:
-          "Hi, I’m VisoAI. Select an uploaded image or document, then ask what MandVision detected or what details need review.",
+          "**Welcome to VisoAI.**\n\nSelect an uploaded image or document, then ask what MandVision detected or what details need review.",
         mode: "chat",
         matches: [],
       },
@@ -394,7 +395,7 @@ function ChatBubble({
             </span>
           ) : null}
         </div>
-        <div className="leading-6">{message.text}</div>
+        <MarkdownMessage text={message.text} />
         {answer?.aiError ? (
           <div className="mt-3 flex gap-2 rounded-lg border border-amber-300/20 bg-amber-300/10 p-3 text-xs text-amber-100">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -430,6 +431,107 @@ function ChatBubble({
   );
 }
 
+function MarkdownMessage({ text }: { text: string }) {
+  const blocks: ReactNode[] = [];
+  let unorderedItems: string[] = [];
+  let orderedItems: string[] = [];
+
+  function flushUnorderedList(key: string) {
+    if (!unorderedItems.length) return;
+
+    blocks.push(
+      <ul key={key} className="list-disc space-y-1 pl-5 text-slate-100">
+        {unorderedItems.map((item, index) => (
+          <li key={`${key}-${index}`}>{renderInlineMarkdown(item)}</li>
+        ))}
+      </ul>
+    );
+    unorderedItems = [];
+  }
+
+  function flushOrderedList(key: string) {
+    if (!orderedItems.length) return;
+
+    blocks.push(
+      <ol key={key} className="list-decimal space-y-1 pl-5 text-slate-100">
+        {orderedItems.map((item, index) => (
+          <li key={`${key}-${index}`}>{renderInlineMarkdown(item)}</li>
+        ))}
+      </ol>
+    );
+    orderedItems = [];
+  }
+
+  text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .forEach((line, index) => {
+      const unorderedMatch = line.match(/^[-*]\s+(.+)$/);
+      const orderedMatch = line.match(/^\d+\.\s+(.+)$/);
+
+      if (unorderedMatch) {
+        flushOrderedList(`ol-before-${index}`);
+        unorderedItems.push(unorderedMatch[1]);
+        return;
+      }
+
+      if (orderedMatch) {
+        flushUnorderedList(`ul-before-${index}`);
+        orderedItems.push(orderedMatch[1]);
+        return;
+      }
+
+      flushUnorderedList(`ul-${index}`);
+      flushOrderedList(`ol-${index}`);
+
+      const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
+      if (headingMatch) {
+        blocks.push(
+          <p key={`heading-${index}`} className="font-semibold text-white">
+            {renderInlineMarkdown(headingMatch[2])}
+          </p>
+        );
+        return;
+      }
+
+      blocks.push(
+        <p key={`paragraph-${index}`} className="text-slate-100">
+          {renderInlineMarkdown(line)}
+        </p>
+      );
+    });
+
+  flushUnorderedList("ul-end");
+  flushOrderedList("ol-end");
+
+  return <div className="space-y-2 leading-6">{blocks}</div>;
+}
+
+function renderInlineMarkdown(text: string): ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+
+  return parts.map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={`bold-${index}`} className="font-semibold text-white">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={`code-${index}`} className="rounded bg-black/30 px-1 py-0.5 text-sky-100">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+
+    return <span key={`text-${index}`}>{part}</span>;
+  });
+}
+
 function buildConversationalAnswer(question: string): AssistantAnswer | null {
   const normalized = question.toLowerCase();
   const makeAnswer = (summary: string, mode = "chat"): AssistantAnswer => ({
@@ -441,13 +543,13 @@ function buildConversationalAnswer(question: string): AssistantAnswer | null {
 
   if (/\b(hi|hello|hey|how are you|how's it going|good morning|good afternoon|good evening)\b/.test(normalized)) {
     return makeAnswer(
-      "I’m doing well, thank you. I’m here to help with MandVision, your uploads, or questions about processed documents. How can I help you today?"
+      "**I’m ready.**\n\nI can help with MandVision, processed uploads, and questions about detected image labels or document text."
     );
   }
 
   if (/\b(thanks|thank you|appreciate)\b/.test(normalized)) {
     return makeAnswer(
-      "You’re welcome. I can help you find details in documents, compare uploads, summarize files, or explain how MandVision works. What would you like to do next?"
+      "**You’re welcome.**\n\nI can help you:\n- Find details in documents\n- Compare uploads\n- Summarize files\n- Explain how MandVision works"
     );
   }
 
@@ -508,30 +610,33 @@ function buildImageAnswer(question: string, image: MediaResult): AssistantAnswer
 
   if (!labels.length) {
     summary =
-      "I do not have image labels for this file yet. Select a processed image with detected objects, then ask me what appears in it.";
+      "**No image labels available yet.**\n\nSelect a processed image with detected objects, then ask me what appears in it.";
   } else if (matchingLabels.length) {
     const matches = matchingLabels
       .slice(0, 5)
-      .map((label) => `${label.name}${label.confidence ? ` at ${Math.round(label.confidence)}% confidence` : ""}`)
-      .join(", ");
-    summary = `Based on the processed labels, yes: I found ${matches}.`;
+      .map((label) => `- ${label.name}${label.confidence ? ` at ${Math.round(label.confidence)}% confidence` : ""}`)
+      .join("\n");
+    summary = `**Yes — matched labels found.**\n\n${matches}`;
     snippets = matchingLabels
       .slice(0, 4)
       .map((label) => `${label.name}${label.confidence ? ` detected at ${Math.round(label.confidence)}% confidence` : ""}`);
 
     if (isDescriptionQuestion) {
       summary +=
-        " I can confirm the detected object category from the current analysis, but detailed visual descriptions like fabric pattern, exact color, or condition need a deeper vision model pass.";
+        "\n\n**Note:** I can confirm the detected object category from the current analysis, but detailed visual descriptions like fabric pattern, exact color, or condition need a deeper vision model pass.";
     }
   } else if (isPresenceQuestion || isRiskQuestion) {
-    summary = `I do not see a matching label for that in the current image analysis. The strongest detections are ${labelNames || "not available"}.`;
+    summary = `**No matching label found.**\n\n**Strongest detections:** ${labelNames || "not available"}.`;
 
     if (isRiskQuestion) {
       summary +=
-        " Treat this as a first-pass screening result, not a final forensic conclusion. A human reviewer should verify sensitive evidence such as blood, weapons, or injury indicators.";
+        "\n\n**Review guidance:** Treat this as a first-pass screening result, not a final forensic conclusion. A human reviewer should verify sensitive evidence such as blood, weapons, or injury indicators.";
     }
   } else {
-    summary = `The top detected objects are ${labelNames || "not available"}. You can ask me whether a specific object appears, or what labels should be reviewed first.`;
+    const topObjects = topLabels
+      .map((label) => `- ${label.name}${label.confidence ? ` (${Math.round(label.confidence)}%)` : ""}`)
+      .join("\n");
+    summary = `**Top detected objects:**\n\n${topObjects || "- Not available"}\n\nAsk me whether a specific object appears, or what labels should be reviewed first.`;
   }
 
   return {
@@ -589,37 +694,37 @@ function buildAppAnswer(question: string): AssistantAnswer | null {
 
   if (/\b(visoai|ai|assistant|ask|question|summary|summarize|source|snippet)\b/.test(normalized)) {
     return makeAnswer(
-      "VisoAI answers questions about MandVision and the selected upload. For images, it can reason from detected object labels. For processed documents, it can search extracted text for summaries, dates, IDs, emails, and other details."
+      "**VisoAI answers questions about selected uploads.**\n\n- For images, it reasons from detected object labels.\n- For documents, it searches extracted text for summaries, dates, IDs, emails, and other details."
     );
   }
 
   if (/\b(image|images|picture|pictures|photo|photos|jpg|jpeg|png|scan pictures|scan photos|scan images|rekognition|label|labels|object|objects)\b/.test(normalized)) {
     return makeAnswer(
-      "Yes. MandVision scans JPG and PNG images, identifies visible objects with confidence scores, and stores the result in Library. Select an image in Library, then ask VisoAI whether a specific object appears or what labels should be reviewed first."
+      "**Yes — MandVision scans images.**\n\n- Supports JPG and PNG images\n- Identifies visible objects with confidence scores\n- Stores processed results in Library\n\nSelect an image, then ask VisoAI whether a specific object appears or what labels should be reviewed first."
     );
   }
 
   if (/\b(upload|uploads|file|files|pdf|pdfs|doc|docs|docx|process|processing|scan|extract|extraction)\b/.test(normalized)) {
     return makeAnswer(
-      "Use Upload to add JPG, PNG, PDF, DOC, or DOCX files. MandVision stores the file, processes it, then adds searchable results to your Library once processing is complete."
+      "**Use Upload to add new files.**\n\nMandVision supports:\n- JPG and PNG images\n- PDF documents\n- DOC and DOCX files\n\nAfter processing, searchable results appear in Library."
     );
   }
 
   if (/\b(library|manage|delete|favorite|filter|export|history|download|preview)\b/.test(normalized)) {
     return makeAnswer(
-      "Use Library to manage processed uploads. From there you can preview files, filter results, mark favorites, export CSV data, download originals, and delete uploads you no longer need."
+      "**Library is your review workspace.**\n\nFrom Library you can:\n- Preview processed files\n- Filter results\n- Mark favorites\n- Export CSV data\n- Download originals\n- Delete uploads you no longer need"
     );
   }
 
   if (/\b(sign|login|log in|account|password|auth|cognito|user)\b/.test(normalized)) {
     return makeAnswer(
-      "Create an account or sign in from the dashboard. When signed in, MandVision can show your own uploads and account actions, including password recovery and account deletion."
+      "**Accounts keep uploads tied to the right user.**\n\nSign in to view your files and manage account actions like password recovery or account deletion."
     );
   }
 
   if (/\b(app|mandvision|help|how do i|what can|where do i)\b/.test(normalized)) {
     return makeAnswer(
-      "MandVision is an evidence image intelligence workspace. Start in Library: upload a file, review detected objects or extracted text, then ask VisoAI focused questions about the selected upload."
+      "**MandVision is an evidence intelligence workspace.**\n\n1. Upload an image or document.\n2. Review detected objects or extracted text.\n3. Ask VisoAI focused questions about the selected upload."
     );
   }
 
@@ -710,34 +815,35 @@ function summarizeAnswer(
   if (!matches.length) {
     if (friendlyFallback) {
       return documentCount
-        ? `I did not find a strong match for "${question}" in the processed documents, but you can ask me to summarize a specific file, compare two document names, or search for dates, emails, IDs, and amounts. How can I help you narrow it down?`
+        ? `**No strong match found.**\n\nI did not find a strong match for "${question}" in the processed documents.\n\nTry asking for:\n- A summary of a specific file\n- Dates, emails, IDs, or amounts\n- A comparison between two document names`
         : noDocumentAnswer(question);
     }
 
-    return `I could not find a match for "${question}" in the extracted documents.`;
+    return `**No document match found.**\n\nI could not find a match for "${question}" in the extracted documents.`;
   }
 
   const topValues = matches.flatMap((match) => getIntentValues(match.item, intent)).slice(0, 4);
 
   if (topValues.length > 0) {
-    return `I found ${topValues.length} relevant detail${topValues.length === 1 ? "" : "s"}: ${topValues.join("; ")}.`;
+    const details = topValues.map((value) => `- ${value}`).join("\n");
+    return `**Found ${topValues.length} relevant detail${topValues.length === 1 ? "" : "s"}.**\n\n${details}`;
   }
 
-  return `I found ${matches.length} document${matches.length === 1 ? "" : "s"} that match "${question}".`;
+  return `**Found matching documents.**\n\n${matches.length} document${matches.length === 1 ? "" : "s"} match "${question}".`;
 }
 
 function noDocumentAnswer(question: string) {
   const normalized = question.toLowerCase();
 
   if (/\b(image|images|picture|pictures|photo|photos|jpg|jpeg|png|rekognition|label|labels|object|objects)\b/.test(normalized)) {
-    return "Yes. MandVision can scan images. Upload a JPG or PNG, select the processed image in Library, and I can answer from the detected object labels.";
+    return "**Yes — MandVision can scan images.**\n\nUpload a JPG or PNG, select the processed image in Library, and I can answer from the detected object labels.";
   }
 
   if (/\b(pdf|pdfs|doc|docs|docx|document|documents|extract|summary|summarize|compare)\b/.test(normalized)) {
-    return "I can help with documents after you upload and process a PDF, DOC, or DOCX in this account. Right now I don’t have any readable documents for your user, so I can explain the workflow but I won’t reference files that are not yours.";
+    return "**No readable documents are available yet.**\n\nI can help with documents after you upload and process a PDF, DOC, or DOCX in this account. I can explain the workflow, but I will not reference files that are not yours.";
   }
 
-  return "I can explain MandVision now. Once you upload and select an image or document in Library, I can help with object labels, summaries, comparisons, and searches. How can I help you today?";
+  return "**I can explain MandVision now.**\n\nOnce you upload and select an image or document in Library, I can help with:\n- Object labels\n- Summaries\n- Comparisons\n- Searches";
 }
 
 function getSortedLabels(item: MediaResult) {
