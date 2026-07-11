@@ -110,14 +110,20 @@ export function DocumentAssistantCard({
       },
     ]);
 
+    const socialAnswer = buildSocialAnswer(cleanQuestion);
+    if (socialAnswer) {
+      addAssistantMessage(socialAnswer);
+      return;
+    }
+
     if (selectedImage) {
       addAssistantMessage(buildImageAnswer(cleanQuestion, selectedImage));
       return;
     }
 
-    const instantAnswer = buildConversationalAnswer(cleanQuestion);
-    if (instantAnswer) {
-      addAssistantMessage(instantAnswer);
+    const appAnswer = buildAppAnswer(cleanQuestion);
+    if (appAnswer) {
+      addAssistantMessage(appAnswer);
       return;
     }
 
@@ -533,7 +539,7 @@ function renderInlineMarkdown(text: string): ReactNode[] {
   });
 }
 
-function buildConversationalAnswer(question: string): AssistantAnswer | null {
+function buildSocialAnswer(question: string): AssistantAnswer | null {
   const normalized = question.toLowerCase();
   const makeAnswer = (summary: string, mode = "chat"): AssistantAnswer => ({
     question,
@@ -544,17 +550,23 @@ function buildConversationalAnswer(question: string): AssistantAnswer | null {
 
   if (/\b(hi|hello|hey|how are you|how's it going|good morning|good afternoon|good evening)\b/.test(normalized)) {
     return makeAnswer(
-      "**I’m ready.**\n\nI can help with MandVision, processed uploads, and questions about detected image labels or document text."
+      "**Hey, I’m here.**\n\nAsk me naturally about the selected image or document. I’ll answer in plain English and use the detected labels or extracted text as my evidence."
     );
   }
 
   if (/\b(thanks|thank you|appreciate)\b/.test(normalized)) {
     return makeAnswer(
-      "**You’re welcome.**\n\nI can help you:\n- Find details in documents\n- Compare uploads\n- Summarize files\n- Explain how MandVision works"
+      "**Anytime.**\n\nKeep the questions coming. I can help identify what the image likely shows, point out what I’m confident about, and be clear when the current analysis is limited."
     );
   }
 
-  return buildAppAnswer(question);
+  if (/\b(who are you|what are you|what can you do)\b/.test(normalized)) {
+    return makeAnswer(
+      "**I’m VisoAI.**\n\nI’m a friendly review assistant for MandVision. I can talk through selected images, explain detected labels in normal language, and help search processed document text."
+    );
+  }
+
+  return null;
 }
 
 function buildSuggestedQuestions(selectedDocument: MediaResult | null) {
@@ -607,12 +619,17 @@ function buildImageAnswer(question: string, image: MediaResult): AssistantAnswer
   const isDescriptionQuestion = /\b(describe|pattern|type|kind|color|wearing|looks like|tell me about)\b/.test(normalized);
   const isRiskQuestion = /\b(blood|weapon|knife|gun|injury|suspicious|danger|hazard|threat|evidence)\b/.test(normalized);
   const isTextQuestion = /\b(word|words|text|read|writing|letter|letters|says|sign|ocr)\b/.test(normalized);
+  const isAnimalNameQuestion =
+    /\b(what|which|name|called|kind|type)\b.*\b(animal|pet|creature)\b/.test(normalized) ||
+    /\b(animal|pet|creature)\b.*\b(called|kind|type|name)\b/.test(normalized);
+  const requestedAnimal = getRequestedAnimal(normalized);
+  const inferredAnimal = inferAnimalFromLabels(labels);
   let summary: string;
   let snippets: string[] = [];
 
   if (!labels.length) {
     summary =
-      "**No image labels available yet.**\n\nSelect a processed image with detected objects, then ask me what appears in it.";
+      "**I can see that an image is selected, but I don’t have labels for it yet.**\n\nTry reprocessing it or selecting a completed image from Library, then ask me again.";
   } else if (isTextQuestion) {
     const topObjects = topLabels
       .map((label) => `- ${label.name}${label.confidence ? ` (${Math.round(label.confidence)}%)` : ""}`)
@@ -621,12 +638,22 @@ function buildImageAnswer(question: string, image: MediaResult): AssistantAnswer
       `**I can see the selected image, but I do not have OCR text for it yet.**\n\n` +
       `MandVision’s current image analysis returns object labels, not readable words from inside the picture.\n\n` +
       `**Detected image labels:**\n\n${topObjects || "- Not available"}`;
+  } else if (isAnimalNameQuestion && inferredAnimal) {
+    summary =
+      `**It looks like a ${inferredAnimal.name.toLowerCase()}.**\n\n` +
+      `${inferredAnimal.detail}\n\n` +
+      `**Why I’m saying that:**\n${inferredAnimal.evidence}`;
+    snippets = inferredAnimal.snippets;
+  } else if (requestedAnimal) {
+    const animalAnswer = answerRequestedAnimal(requestedAnimal, labels, inferredAnimal);
+    summary = animalAnswer.summary;
+    snippets = animalAnswer.snippets;
   } else if (matchingLabels.length) {
     const matches = matchingLabels
       .slice(0, 5)
       .map((label) => `- ${label.name}${label.confidence ? ` at ${Math.round(label.confidence)}% confidence` : ""}`)
       .join("\n");
-    summary = `**Yes — matched labels found.**\n\n${matches}`;
+    summary = `**Yes, I see that in the selected image.**\n\n${matches}`;
     snippets = matchingLabels
       .slice(0, 4)
       .map((label) => `${label.name}${label.confidence ? ` detected at ${Math.round(label.confidence)}% confidence` : ""}`);
@@ -636,7 +663,7 @@ function buildImageAnswer(question: string, image: MediaResult): AssistantAnswer
         "\n\n**Note:** I can confirm the detected object category from the current analysis, but detailed visual descriptions like fabric pattern, exact color, or condition need a deeper vision model pass.";
     }
   } else if (isPresenceQuestion || isRiskQuestion) {
-    summary = `**No matching label found.**\n\n**Strongest detections:** ${labelNames || "not available"}.`;
+    summary = `**I don’t see that in the current labels.**\n\nThe strongest detections are: ${labelNames || "not available"}.`;
 
     if (isRiskQuestion) {
       summary +=
@@ -646,7 +673,7 @@ function buildImageAnswer(question: string, image: MediaResult): AssistantAnswer
     const topObjects = topLabels
       .map((label) => `- ${label.name}${label.confidence ? ` (${Math.round(label.confidence)}%)` : ""}`)
       .join("\n");
-    summary = `**Top detected objects:**\n\n${topObjects || "- Not available"}\n\nAsk me whether a specific object appears, or what labels should be reviewed first.`;
+    summary = `**Here’s what I can tell from the selected image:**\n\n${topObjects || "- Not available"}\n\nYou can ask me things like “is it a dog?”, “what animal is it?”, or “what should I review first?”`;
   }
 
   return {
@@ -663,6 +690,123 @@ function buildImageAnswer(question: string, image: MediaResult): AssistantAnswer
         ]
       : [],
   };
+}
+
+function inferAnimalFromLabels(labels: MediaResult["labels"]) {
+  const sortedLabels = getSortedLabels({ labels } as MediaResult);
+  const dogLabels = findLabels(sortedLabels, ["dog", "canine", "puppy", "bulldog", "boxer", "hound", "retriever", "terrier"]);
+  const catLabels = findLabels(sortedLabels, ["cat", "kitten", "feline"]);
+
+  if (dogLabels.length) {
+    const breedLabel = dogLabels.find((label) => !["dog", "canine", "animal"].includes(label.name?.toLowerCase() || ""));
+    const evidence = dogLabels
+      .slice(0, 4)
+      .map((label) => `- ${label.name}${label.confidence ? ` (${Math.round(label.confidence)}%)` : ""}`)
+      .join("\n");
+
+    return {
+      name: "Dog",
+      detail: breedLabel
+        ? `It may be a ${breedLabel.name?.toLowerCase()}, based on the breed-style label MandVision detected.`
+        : "MandVision detected dog/canine-style labels, so the simplest answer is dog.",
+      evidence,
+      snippets: dogLabels
+        .slice(0, 3)
+        .map((label) => `${label.name}${label.confidence ? ` detected at ${Math.round(label.confidence)}% confidence` : ""}`),
+    };
+  }
+
+  if (catLabels.length) {
+    const evidence = catLabels
+      .slice(0, 4)
+      .map((label) => `- ${label.name}${label.confidence ? ` (${Math.round(label.confidence)}%)` : ""}`)
+      .join("\n");
+
+    return {
+      name: "Cat",
+      detail: "MandVision detected cat/feline-style labels, so the simplest answer is cat.",
+      evidence,
+      snippets: catLabels
+        .slice(0, 3)
+        .map((label) => `${label.name}${label.confidence ? ` detected at ${Math.round(label.confidence)}% confidence` : ""}`),
+    };
+  }
+
+  const animalLabels = findLabels(sortedLabels, ["animal", "pet"]);
+  if (!animalLabels.length) return null;
+
+  return {
+    name: "Animal",
+    detail: "MandVision can tell there is an animal, but it did not provide a specific species label.",
+    evidence: animalLabels
+      .slice(0, 4)
+      .map((label) => `- ${label.name}${label.confidence ? ` (${Math.round(label.confidence)}%)` : ""}`)
+      .join("\n"),
+    snippets: animalLabels
+      .slice(0, 3)
+      .map((label) => `${label.name}${label.confidence ? ` detected at ${Math.round(label.confidence)}% confidence` : ""}`),
+  };
+}
+
+function getRequestedAnimal(normalizedQuestion: string) {
+  if (/\b(dog|puppy|canine|bulldog|boxer)\b/.test(normalizedQuestion)) return "dog";
+  if (/\b(cat|kitten|feline)\b/.test(normalizedQuestion)) return "cat";
+  return "";
+}
+
+function answerRequestedAnimal(
+  requestedAnimal: string,
+  labels: MediaResult["labels"],
+  inferredAnimal: ReturnType<typeof inferAnimalFromLabels>
+) {
+  const sortedLabels = getSortedLabels({ labels } as MediaResult);
+  const requestedLabels =
+    requestedAnimal === "dog"
+      ? findLabels(sortedLabels, ["dog", "canine", "puppy", "bulldog", "boxer", "hound", "retriever", "terrier"])
+      : findLabels(sortedLabels, ["cat", "kitten", "feline"]);
+
+  if (requestedLabels.length) {
+    const evidence = requestedLabels
+      .slice(0, 4)
+      .map((label) => `- ${label.name}${label.confidence ? ` (${Math.round(label.confidence)}%)` : ""}`)
+      .join("\n");
+
+    return {
+      summary: `**Yes, it looks like a ${requestedAnimal}.**\n\n${evidence}`,
+      snippets: requestedLabels
+        .slice(0, 3)
+        .map((label) => `${label.name}${label.confidence ? ` detected at ${Math.round(label.confidence)}% confidence` : ""}`),
+    };
+  }
+
+  if (inferredAnimal?.name && inferredAnimal.name.toLowerCase() !== requestedAnimal) {
+    return {
+      summary:
+        `**I don’t think it’s a ${requestedAnimal}.**\n\n` +
+        `It looks more like a ${inferredAnimal.name.toLowerCase()} based on the detected labels.\n\n` +
+        `**Evidence:**\n${inferredAnimal.evidence}`,
+      snippets: inferredAnimal.snippets,
+    };
+  }
+
+  const strongestLabels = sortedLabels
+    .slice(0, 5)
+    .map((label) => `- ${label.name}${label.confidence ? ` (${Math.round(label.confidence)}%)` : ""}`)
+    .join("\n");
+
+  return {
+    summary:
+      `**I don’t see a clear ${requestedAnimal} label.**\n\n` +
+      `Here are the strongest labels MandVision found:\n${strongestLabels || "- Not available"}`,
+    snippets: [],
+  };
+}
+
+function findLabels(labels: MediaResult["labels"], terms: string[]) {
+  return (labels || []).filter((label) => {
+    const labelName = label.name?.toLowerCase() || "";
+    return terms.some((term) => labelName.includes(term));
+  });
 }
 
 function buildAnswer(
