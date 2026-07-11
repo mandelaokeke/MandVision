@@ -1,10 +1,33 @@
 # MandVision
 
-MandVision is a serverless file intelligence platform for uploading images, PDFs, DOC, and DOCX files, processing them asynchronously, and turning the results into searchable analytics and conversational answers.
+MandVision is an AI-powered file intelligence platform for reviewing images, PDFs, DOC, and DOCX files. It lets a user upload evidence-style media, detect visible objects, extract document text, and ask VisoAI natural questions about the selected file.
 
-The app is built as a production-inspired AWS event-driven pipeline with a Next.js frontend, pre-signed S3 uploads, SQS-backed processing, DynamoDB metadata storage, Cognito authentication, and a document-aware assistant called VisoAI.
+Live app: [mandvision.vercel.app](https://mandvision.vercel.app)
 
-[Live app](https://mandvision.vercel.app)
+## Current Highlights
+
+- Real VisoAI assistant backed by the OpenAI Responses API.
+- Vision chat for selected images using the uploaded image plus Rekognition labels as context.
+- Document Q&A over extracted PDF/DOCX text.
+- OCR fallback for scanned PDFs using Amazon Textract.
+- Guest demo sessions with a 5-upload limit.
+- Signed-in workspaces scoped to the authenticated user.
+- Library-first review flow with preview, search, filters, favorites, CSV export, delete, and reprocess actions.
+- Production deployment on Vercel with AWS serverless infrastructure.
+
+## July 11, 2026 Updates
+
+- Connected image chat to a real LLM so VisoAI can answer conversational questions about selected images instead of only repeating labels.
+- Added `/vision/ask`, a new API endpoint that sends selected image context to OpenAI through an AWS Lambda.
+- Stored and loaded the OpenAI API key from AWS Secrets Manager.
+- Added markdown rendering for VisoAI responses.
+- Fixed image prompt routing so selected-image questions always go to VisoAI before local helper responses.
+- Added guest session isolation and limited guests to 5 uploads.
+- Removed upload controls from the Library page so Library is focused on review.
+- Added Textract OCR fallback for scanned/image-based PDFs.
+- Reprocessed a scanned PDF successfully from `EMPTY / 0 words` to `COMPLETE / 170 words`.
+- Enabled document reprocessing for empty or failed document extraction.
+- Updated production deployments for AWS API, AWS processing Lambdas, and Vercel.
 
 ## Product Preview
 
@@ -14,14 +37,46 @@ The app is built as a production-inspired AWS event-driven pipeline with a Next.
 
 ## What It Does
 
-- Upload images and documents directly from the browser using secure pre-signed S3 URLs.
-- Process uploads asynchronously after S3 object-created events.
-- Detect image labels with Amazon Rekognition.
-- Extract searchable text from PDFs and DOCX files.
-- Store upload status, metadata, labels, document text, previews, and insights in DynamoDB.
-- Manage uploaded files with search, filters, favorites, CSV export, preview, reprocess, and delete actions.
-- Ask VisoAI questions about MandVision or scoped processed documents.
-- Support public demo analytics first, then user-specific dashboard behavior after authentication.
+MandVision is built around a simple workflow:
+
+1. Upload an image or document.
+2. Let the backend process it asynchronously.
+3. Open the item in Library.
+4. Review extracted labels, OCR text, metadata, and structured details.
+5. Ask VisoAI targeted questions about the selected file.
+
+Supported uploads:
+
+- JPG
+- PNG
+- PDF
+- DOC
+- DOCX
+
+Image features:
+
+- Detects visible objects with Amazon Rekognition.
+- Stores labels and confidence scores.
+- Lets VisoAI answer natural questions about the selected image.
+- Uses the image itself for LLM vision analysis, not just label matching.
+
+Document features:
+
+- Extracts embedded text from PDFs.
+- Falls back to Textract OCR for scanned PDFs.
+- Extracts raw text from DOCX files.
+- Detects useful structured details such as emails, dates, amounts, phone numbers, and identifiers.
+- Lets VisoAI summarize and answer questions over processed document text.
+
+Library features:
+
+- Search by filename, label, or extracted document text.
+- Filter by media type, status, extraction state, and favorites.
+- Preview selected files.
+- Download originals and extracted text.
+- Export CSV metadata.
+- Reprocess failed, pending, or empty-extraction files.
+- Delete uploads from storage and history.
 
 ## Architecture
 
@@ -34,26 +89,31 @@ flowchart LR
 
     Api --> Presign["Presign URL Lambda"]
     Presign --> Ingest["S3 Ingest Bucket<br/>uploads/{fileId}-{name}"]
-    Web -- "PUT file with signed URL" --> Ingest
+    Web -- "PUT with signed URL" --> Ingest
 
     Ingest -- "ObjectCreated: uploads/" --> Queue["SQS Processing Queue"]
     Queue --> Processor["Media Processor Lambda"]
-    Queue -. "after 3 failed receives" .-> DLQ["SQS Dead Letter Queue<br/>14 day retention"]
+    Queue -. "after failed retries" .-> DLQ["SQS Dead Letter Queue"]
 
     Processor --> Rekognition["Amazon Rekognition<br/>image labels"]
-    Processor --> Extract["PDF/DOCX extraction<br/>pdf-parse + mammoth"]
-    Processor --> Processed["S3 Processed Bucket"]
+    Processor --> Textract["Amazon Textract<br/>scanned PDF OCR"]
+    Processor --> Parser["pdf-parse + mammoth<br/>document text extraction"]
     Processor --> Dynamo["DynamoDB Metadata<br/>fileId partition key"]
 
     Api --> MediaApi["List / Get / Delete / Reprocess Lambdas"]
     MediaApi --> Dynamo
     MediaApi --> Ingest
-    MediaApi --> Processed
 
-    Api --> Ask["VisoAI Ask Lambda"]
-    Ask --> Dynamo
-    Ask --> Secrets["AWS Secrets Manager<br/>OpenAI API key"]
-    Ask --> OpenAI["OpenAI API"]
+    Api --> AskDoc["VisoAI Document Ask Lambda"]
+    AskDoc --> Dynamo
+    AskDoc --> Secrets["AWS Secrets Manager<br/>OpenAI API key"]
+    AskDoc --> OpenAI["OpenAI Responses API"]
+
+    Api --> AskVision["VisoAI Vision Ask Lambda"]
+    AskVision --> Dynamo
+    AskVision --> Ingest
+    AskVision --> Secrets
+    AskVision --> OpenAI
 
     Web --> Cognito["Amazon Cognito<br/>sign up, sign in, recovery"]
 ```
@@ -61,71 +121,114 @@ flowchart LR
 ## Processing Flow
 
 1. The browser requests an upload URL from API Gateway.
-2. A Lambda returns a pre-signed S3 PUT URL with a generated `fileId`.
-3. The browser uploads the file directly to S3, keeping file bytes out of the web server.
-4. S3 publishes an object-created notification for the `uploads/` prefix.
-5. SQS buffers the event and invokes the media processor Lambda in batches.
-6. The processor detects whether the file is an image or document.
-7. Images are analyzed with Rekognition. PDFs and DOCX files are converted into searchable text.
-8. Processing results are written to DynamoDB under the same `fileId`.
-9. The frontend refreshes the library, dashboard analytics, previews, and VisoAI context from the stored metadata.
+2. The presign Lambda creates a `fileId`, validates guest upload limits, and returns a short-lived S3 upload URL.
+3. The browser uploads the file directly to S3.
+4. S3 publishes an object-created event for the `uploads/` prefix.
+5. SQS buffers the event and invokes the media processor Lambda.
+6. The processor determines whether the file is an image or document.
+7. Images are analyzed with Rekognition.
+8. PDFs are parsed for embedded text; if empty, Textract OCR is used.
+9. DOCX files are extracted with Mammoth.
+10. Metadata, status, labels, text, previews, insights, and errors are stored in DynamoDB.
+11. The frontend refreshes Library and VisoAI context from stored metadata.
+
+## VisoAI
+
+VisoAI is the assistant layer for MandVision.
+
+For images, VisoAI receives:
+
+- The selected uploaded image through a signed S3 URL.
+- Rekognition labels as supporting context.
+- The user’s question.
+
+For documents, VisoAI receives:
+
+- The selected or scoped document text.
+- Detected document insights.
+- Source filenames for attribution.
+- The user’s question.
+
+VisoAI answers in markdown and is designed to be conversational, but scoped. It should answer from the selected user file rather than unrelated public/demo context.
+
+## Guest And User Sessions
+
+MandVision supports both guest demos and signed-in users.
+
+- Guests get a temporary session stored in browser session storage.
+- Guest uploads are scoped to that temporary session.
+- Guests are limited to 5 uploads.
+- Signed-in users can keep a persistent workspace tied to their account.
+- Signed-in uploads are separated from guest uploads and from other users.
 
 ## Design Decisions
 
 ### Direct-to-S3 Uploads
 
-MandVision uses pre-signed S3 URLs so the browser uploads files directly to AWS. This keeps large file payloads away from the Next.js app and API Lambda, reduces timeout risk, and makes upload capacity mostly an S3 concern instead of an application-server concern.
+MandVision uses pre-signed S3 URLs so files go directly from the browser to S3. This avoids sending file bytes through the Next.js app or API Lambda, reducing timeout risk and keeping upload handling serverless.
 
-### SQS Before Processing Lambda
+### SQS Before Processing
 
-S3 events can arrive in bursts. SQS sits between S3 and the processor Lambda to absorb spikes, provide retry control, and avoid losing work if the processor fails temporarily. The queue uses a 60 second visibility timeout, 4 day retention, and a dead letter queue after 3 failed receives.
+S3 upload events are routed through SQS before Lambda processing. This gives the pipeline buffering, retries, and a dead letter queue instead of relying on a single direct invocation.
 
-### DynamoDB Idempotency Boundary
+### DynamoDB As The Media Index
 
-Each upload gets a `fileId` before it reaches S3. The object key includes that ID, and the processor stores the final metadata using `fileId` as the DynamoDB partition key. If the same event is processed again, it updates the same logical media item instead of creating duplicate records.
+Each upload receives a generated `fileId`. The file ID is included in the S3 object key and used as the DynamoDB partition key, so repeated processing updates the same logical item.
 
-### Focused Lambdas
+### Small Lambdas
 
-The backend is split into small Lambdas for upload URLs, listing media, fetching details, deleting media, reprocessing, preview URLs, and VisoAI. This keeps each function easier to reason about and gives each one a narrower IAM permission set.
+The backend is split into focused functions:
 
-### VisoAI Document Scope
+- Presign upload URL
+- List media
+- Get media details
+- Generate preview URLs
+- Delete media
+- Reprocess media
+- Ask documents
+- Ask images
+- Process uploaded media
 
-VisoAI can answer normal questions about MandVision, but document answers are scoped to processed documents. Empty document selection does not fall back to global demo documents, which prevents a signed-in user from accidentally seeing public sample context.
+This keeps permissions narrower and each function easier to reason about.
 
-### Where Step Functions Fits Next
+### OCR Fallback
 
-The current pipeline is intentionally simple: S3, SQS, one processor Lambda, and DynamoDB. Step Functions becomes useful when the processing path grows into multiple long-running stages, such as async Textract jobs, thumbnail generation, human review, retries per stage, or branching workflows for different file types. For the current version, SQS plus one processor Lambda is cheaper and easier to operate.
+Some PDFs contain selectable embedded text, while others are scanned images. MandVision first tries regular PDF text extraction, then falls back to Textract OCR when the PDF text layer is empty.
 
 ## Failure Handling
 
-- SQS retries failed processing events automatically.
-- After 3 failed receives, events move to the DLQ for inspection.
-- Processor errors are written back to DynamoDB with `FAILED` status when possible.
-- The frontend exposes retry/reprocess actions for items that need attention.
-- Secrets such as the OpenAI API key are loaded from AWS Secrets Manager instead of the frontend.
-
-## Cost At Scale
-
-MandVision is designed to have low idle cost. Most cost grows with usage:
-
-- S3: object storage plus PUT/GET requests.
-- Lambda: processing duration per upload and API request volume.
-- SQS: request volume for queued processing events.
-- DynamoDB: on-demand reads and writes for metadata and history.
-- Rekognition: image analysis calls.
-- OpenAI: VisoAI questions over processed document context.
-- Vercel: frontend hosting and builds.
-
-For demo or portfolio traffic, the largest variable costs are usually Rekognition calls, OpenAI usage, and stored files. At higher volume, the main scaling lever is to control file size, processing concurrency, document extraction limits, and VisoAI context size.
+- SQS retries failed processing events.
+- Events move to a DLQ after repeated failed receives.
+- Failed processing writes `FAILED` metadata when possible.
+- Empty scanned PDFs can be repaired through Textract OCR.
+- Library exposes reprocess actions for failed, pending, and empty document items.
+- VisoAI falls back gracefully if OpenAI is unavailable.
+- API secrets are loaded server-side from AWS Secrets Manager.
 
 ## Security Notes
 
-- S3 buckets block public access and use managed encryption.
-- Upload URLs are short-lived pre-signed URLs.
-- Cognito handles sign up, sign in, email verification, and account recovery.
-- API credentials are not exposed to the browser.
-- The OpenAI API key is stored in AWS Secrets Manager.
-- Uploaded media is referenced through generated IDs rather than trusting raw filenames.
+- S3 buckets block public access.
+- S3 buckets use managed encryption.
+- Upload URLs are short-lived.
+- Cognito handles signup, sign-in, verification, account recovery, and account state.
+- OpenAI keys stay in AWS Secrets Manager.
+- Browser code never receives API credentials.
+- Guest and signed-in uploads are scoped before being shown in Library.
+
+## Cost Notes
+
+MandVision is designed for low idle cost. Most costs scale with usage:
+
+- S3 storage and requests
+- Lambda processing duration
+- SQS requests
+- DynamoDB reads and writes
+- Rekognition image detection
+- Textract OCR for scanned documents
+- OpenAI VisoAI requests
+- Vercel hosting/builds
+
+The largest variable costs are usually Rekognition, Textract, OpenAI usage, and stored files.
 
 ## Tech Stack
 
@@ -138,9 +241,10 @@ For demo or portfolio traffic, the largest variable costs are usually Rekognitio
 - Amazon SQS
 - Amazon DynamoDB
 - Amazon Rekognition
+- Amazon Textract
 - Amazon Cognito
 - AWS Secrets Manager
-- OpenAI API
+- OpenAI Responses API
 - Vercel
 
 ## Local Development
@@ -157,6 +261,18 @@ Run the web app:
 npm run dev:web
 ```
 
+Build the web app:
+
+```bash
+npm run build:web
+```
+
+Deploy infrastructure:
+
+```bash
+npm run deploy
+```
+
 Common frontend environment variables:
 
 ```bash
@@ -166,37 +282,37 @@ NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID=your_cognito_app_client_id
 NEXT_PUBLIC_WEBSOCKET_URL=optional_websocket_url
 ```
 
-Deploy infrastructure:
+Backend OpenAI configuration:
 
 ```bash
-npm run deploy
+OPENAI_API_KEY_SECRET_NAME=MandVision
+OPENAI_MODEL=gpt-5.6
 ```
 
-Build the web app:
-
-```bash
-npm run build:web
-```
+The default deployment expects the OpenAI API key to be available in AWS Secrets Manager.
 
 ## Repository Structure
 
 ```text
-apps/web/                 Next.js frontend
-infra/                    AWS CDK stacks
-services/presign-url/     Pre-signed upload URL Lambda
-services/media-processor/ SQS-driven media processor Lambda
-services/list-media/      Media library API Lambda
-services/get-media/       Media detail API Lambda
-services/delete-media/    S3 and DynamoDB delete Lambda
-services/reprocess-media/ Manual reprocess Lambda
-services/ask-document/    VisoAI document assistant Lambda
-docs/screenshots/         README screenshots
+apps/web/                   Next.js frontend
+infra/                      AWS CDK stacks
+services/presign-url/       Pre-signed upload URL Lambda
+services/media-processor/   SQS-driven media processor Lambda
+services/list-media/        Media library API Lambda
+services/get-media/         Media detail API Lambda
+services/get-preview-url/   Signed preview URL Lambda
+services/delete-media/      S3 and DynamoDB delete Lambda
+services/reprocess-media/   Manual reprocess Lambda
+services/ask-document/      VisoAI document Q&A Lambda
+services/ask-vision/        VisoAI image/vision Q&A Lambda
+docs/screenshots/           README screenshots
 ```
 
 ## Roadmap
 
-- Use async Textract for scanned PDFs and multi-page OCR.
-- Add Step Functions when processing becomes a multi-stage workflow.
-- Add stronger backend tenant isolation with user-scoped keys or indexes.
-- Add CloudWatch alarms for DLQ depth and processor failures.
-- Add end-to-end tests for upload, processing, delete, and VisoAI flows.
+- Add async Textract workflows for larger multi-page PDFs.
+- Add Step Functions if processing grows into more long-running stages.
+- Add stronger backend tenant isolation with user-scoped keys or secondary indexes.
+- Add CloudWatch alarms for DLQ depth, OCR failures, and VisoAI errors.
+- Add automated end-to-end tests for upload, processing, OCR, reprocess, delete, and VisoAI flows.
+- Add richer case/evidence organization for security-review workflows.
