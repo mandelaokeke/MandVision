@@ -116,14 +116,14 @@ export function DocumentAssistantCard({
       return;
     }
 
-    const appAnswer = buildAppAnswer(cleanQuestion);
-    if (appAnswer) {
-      addAssistantMessage(appAnswer);
+    if (selectedImage) {
+      void askVisionBackend(cleanQuestion, selectedImage);
       return;
     }
 
-    if (selectedImage) {
-      void askVisionBackend(cleanQuestion, selectedImage);
+    const appAnswer = buildAppAnswer(cleanQuestion);
+    if (appAnswer) {
+      addAssistantMessage(appAnswer);
       return;
     }
 
