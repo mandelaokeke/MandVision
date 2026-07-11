@@ -56,7 +56,7 @@ export function ResultsCard({ result }: { result: MediaResult | null }) {
               <DocumentInsightsPanel insights={result?.documentInsights} />
             </section>
 
-            <DocumentTextPanel item={result} />
+            <DocumentTextPanel item={result} maxHeightClass="max-h-[48rem]" />
           </div>
         ) : labels.length > 0 ? (
           <div className="space-y-5">

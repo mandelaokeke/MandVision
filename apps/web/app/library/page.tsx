@@ -20,7 +20,7 @@ export default function LibraryPage() {
   const mediaType = (visibleActiveItem ?? visibleMetadata)?.mediaType;
 
   return (
-    <div className="mx-auto grid w-full max-w-[92rem] items-start gap-6 overflow-hidden px-4 py-6 sm:px-6 sm:py-8 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+    <div className="mx-auto grid w-full max-w-[118rem] items-start gap-6 overflow-hidden px-4 py-6 sm:px-6 sm:py-8 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
       <section className="min-w-0 space-y-6">
         <div className="min-w-0">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-300/80">
@@ -87,6 +87,9 @@ export default function LibraryPage() {
           stage={upload.stage}
           progressLabel={upload.progressLabel}
         />
+      </aside>
+
+      <section className="min-w-0 space-y-6 xl:col-span-2">
         <ResultsCard result={visibleActiveItem} />
         <DocumentAssistantCard
           items={dashboardItems}
@@ -95,7 +98,7 @@ export default function LibraryPage() {
           onFilterTermChange={setHistoryFilter}
           compact
         />
-      </aside>
+      </section>
     </div>
   );
 }

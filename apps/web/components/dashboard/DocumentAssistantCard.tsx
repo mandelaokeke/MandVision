@@ -230,7 +230,7 @@ export function DocumentAssistantCard({
   }
 
   return (
-    <section className={compact ? "" : "mx-auto max-w-7xl px-4 pt-6 sm:px-6"}>
+    <section className={compact ? "" : "mx-auto max-w-[118rem] px-4 pt-6 sm:px-6"}>
       <div className="rounded-2xl border border-white/10 bg-[#0d131c] p-4 text-white shadow-2xl shadow-black/20 sm:p-6">
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 gap-4">
@@ -273,7 +273,7 @@ export function DocumentAssistantCard({
                 <div className="ai-assistant-avatar flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-300/30 bg-sky-300/10 text-sky-100">
                   <Bot className="h-4 w-4" />
                 </div>
-                <div className="ai-assistant-bubble max-w-[82%] rounded-2xl rounded-tl-md border border-sky-300/20 bg-[#0d1722] p-4 text-sm text-slate-100">
+                <div className="ai-assistant-bubble min-w-0 flex-1 rounded-2xl rounded-tl-md border border-sky-300/20 bg-[#0d1722] p-4 text-sm text-slate-100">
                   <div className="mb-2 text-xs font-medium text-sky-200">VisoAI</div>
                   Reading your processed documents...
                 </div>
@@ -375,7 +375,7 @@ function ChatBubble({
       <div className="ai-assistant-avatar flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-300/30 bg-sky-300/10 text-sky-100">
         <Bot className="h-4 w-4" />
       </div>
-      <div className="ai-assistant-bubble max-w-[88%] rounded-2xl rounded-tl-md border border-sky-300/20 bg-[#0d1722] p-4 text-sm text-slate-100">
+      <div className="ai-assistant-bubble min-w-0 flex-1 rounded-2xl rounded-tl-md border border-sky-300/20 bg-[#0d1722] p-4 text-sm text-slate-100">
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <span className="ai-assistant-name text-xs font-semibold text-sky-200">VisoAI</span>
           {answer?.mode === "ai" ? (
