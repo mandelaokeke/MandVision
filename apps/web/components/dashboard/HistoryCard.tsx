@@ -789,9 +789,9 @@ function HistoryItemActions({
   horizontal?: boolean;
 }) {
   const canReprocess =
-    item.status !== "PROCESSED" &&
-    item.status !== "DOCUMENT_PENDING" &&
-    item.mediaType !== "document";
+    item.mediaType === "document"
+      ? item.extractionStatus !== "COMPLETE"
+      : item.status !== "PROCESSED" && item.status !== "DOCUMENT_PENDING";
   const extractedText = getExtractedText(item);
 
   function downloadExtractedText() {

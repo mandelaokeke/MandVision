@@ -91,7 +91,7 @@ export class ApiStack extends cdk.Stack {
         runtime: lambda.Runtime.NODEJS_20_X,
         entry: "../services/reprocess-media/src/handler.ts",
         handler: "main",
-        timeout: cdk.Duration.seconds(30),
+        timeout: cdk.Duration.seconds(90),
         environment: {
           METADATA_TABLE_NAME: props.metadataTable.tableName,
         },
@@ -156,7 +156,7 @@ export class ApiStack extends cdk.Stack {
     openAiApiKeySecret.grantRead(askVisionLambda);
     reprocessMediaLambda.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ["rekognition:DetectLabels"],
+        actions: ["rekognition:DetectLabels", "textract:DetectDocumentText"],
         resources: ["*"],
       })
     );

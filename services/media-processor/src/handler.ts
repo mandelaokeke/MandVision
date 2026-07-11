@@ -2,6 +2,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { DetectLabelsCommand, RekognitionClient } from "@aws-sdk/client-rekognition";
 import { GetObjectCommand, HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DetectDocumentTextCommand, TextractClient } from "@aws-sdk/client-textract";
 import mammoth from "mammoth";
 import pdfParse from "pdf-parse";
 
@@ -15,6 +16,7 @@ const dynamoClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const rekognitionClient = new RekognitionClient({});
 const s3Client = new S3Client({});
+const textractClient = new TextractClient({});
 const fileIdPattern =
   /^uploads\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-(.+)$/i;
 const maxStoredTextLength = 12000;
@@ -202,6 +204,10 @@ async function extractDocumentText({
     if (fileType === "application/pdf") {
       const result = await pdfParse(buffer);
       extractedText = result.text || "";
+
+      if (!normalizeExtractedText(extractedText)) {
+        extractedText = await extractTextWithTextract(bucket, objectKey);
+      }
     }
 
     if (
@@ -234,6 +240,24 @@ async function extractDocumentText({
         error instanceof Error ? error.message : "Document extraction failed.",
     };
   }
+}
+
+async function extractTextWithTextract(bucket: string, objectKey: string) {
+  const result = await textractClient.send(
+    new DetectDocumentTextCommand({
+      Document: {
+        S3Object: {
+          Bucket: bucket,
+          Name: objectKey,
+        },
+      },
+    })
+  );
+
+  return (result.Blocks || [])
+    .filter((block) => block.BlockType === "LINE" && block.Text)
+    .map((block) => block.Text)
+    .join("\n");
 }
 
 async function streamToBuffer(stream: unknown) {

@@ -52,7 +52,7 @@ export class StorageStack extends cdk.Stack {
 
     const processingQueue = new sqs.Queue(this, "MediaProcessingQueue", {
       queueName: "mandvision-media-processing-queue",
-      visibilityTimeout: cdk.Duration.seconds(60),
+      visibilityTimeout: cdk.Duration.seconds(120),
       retentionPeriod: cdk.Duration.days(4),
       deadLetterQueue: {
         queue: deadLetterQueue,
@@ -67,7 +67,7 @@ export class StorageStack extends cdk.Stack {
         runtime: lambda.Runtime.NODEJS_20_X,
         entry: "../services/media-processor/src/handler.ts",
         handler: "main",
-        timeout: cdk.Duration.seconds(30),
+        timeout: cdk.Duration.seconds(90),
         environment: {
           INGEST_BUCKET_NAME: this.ingestBucket.bucketName,
           PROCESSED_BUCKET_NAME: this.processedBucket.bucketName,
@@ -81,7 +81,7 @@ export class StorageStack extends cdk.Stack {
     props.metadataTable.grantWriteData(processorLambda);
     processorLambda.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ["rekognition:DetectLabels"],
+        actions: ["rekognition:DetectLabels", "textract:DetectDocumentText"],
         resources: ["*"],
       })
     );
