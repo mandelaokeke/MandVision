@@ -20,7 +20,10 @@ const DashboardContext = createContext<DashboardContextValue | null>(null);
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const session = useDashboardSession();
-  const upload = useUpload({ ownerUserId: session.user?.id });
+  const upload = useUpload({
+    ownerUserId: session.user?.id,
+    guestSessionId: session.user ? undefined : session.guestSessionId,
+  });
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [historyFilter, setHistoryFilter] = useState("");
   const currentUserId = session.user?.id ?? null;
@@ -30,22 +33,28 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     () =>
       session.user
         ? upload.history.filter((item) => getMediaOwner(item, upload.mediaOwners) === session.user?.id)
-        : upload.history.filter((item) => !getMediaOwner(item, upload.mediaOwners)),
-    [session.user, upload.history, upload.mediaOwners]
+        : upload.history.filter((item) => item.guestSessionId === session.guestSessionId),
+    [session.user, session.guestSessionId, upload.history, upload.mediaOwners]
   );
 
   const activeItem = upload.selectedHistoryItem ?? upload.result;
   const activeItemOwner = activeItem ? getMediaOwner(activeItem, upload.mediaOwners) : undefined;
+  const activeItemGuestSessionId = activeItem?.guestSessionId;
   const activeItemVisible =
     !activeItem ||
-    (session.user ? activeItemOwner === session.user.id : !activeItemOwner);
+    (session.user
+      ? activeItemOwner === session.user.id
+      : activeItemGuestSessionId === session.guestSessionId);
   const visibleActiveItem = activeItemVisible ? activeItem : null;
   const metadataOwner = upload.metadata
     ? upload.mediaOwners[upload.metadata.fileId]
     : undefined;
+  const metadataGuestSessionId = upload.metadata?.guestSessionId;
   const visibleMetadata =
     !upload.metadata ||
-    (session.user ? metadataOwner === session.user.id : !metadataOwner)
+    (session.user
+      ? metadataOwner === session.user.id
+      : metadataGuestSessionId === session.guestSessionId)
       ? upload.metadata
       : null;
 

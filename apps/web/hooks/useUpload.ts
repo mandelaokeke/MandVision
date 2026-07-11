@@ -12,6 +12,8 @@ export type UploadStage =
 
 export type UploadMetadata = {
   fileId: string;
+  ownerUserId?: string;
+  guestSessionId?: string;
   key: string;
   fileName: string;
   fileSize: number;
@@ -36,6 +38,7 @@ export type DocumentInsights = {
 export type MediaResult = {
   fileId: string;
   ownerUserId?: string;
+  guestSessionId?: string;
   bucket?: string;
   objectKey?: string;
   originalFileName?: string;
@@ -69,7 +72,13 @@ const SUPPORTED_FILE_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
-export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
+export function useUpload({
+  ownerUserId,
+  guestSessionId,
+}: {
+  ownerUserId?: string;
+  guestSessionId?: string;
+} = {}) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [stage, setStage] = useState<UploadStage>("idle");
@@ -134,7 +143,9 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
 
   useEffect(() => {
     void fetchHistory();
-  }, []);
+    // History should refresh when the active signed-in user or guest demo session changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownerUserId, guestSessionId]);
 
   useEffect(() => {
     const hasPendingItems = history.some((item) => isPendingMediaItem(item));
@@ -146,6 +157,8 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
     }, 5000);
 
     return () => window.clearInterval(intervalId);
+    // Keep this interval tied to pending history changes, not fetchHistory identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history]);
 
   useEffect(() => {
@@ -156,6 +169,8 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
     }, 5000);
 
     return () => window.clearInterval(intervalId);
+    // Keep this interval tied to upload stage changes, not fetchHistory identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
 
   useEffect(() => {
@@ -290,12 +305,13 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
           fileName: file.name,
           fileType: file.type,
           ownerUserId,
+          guestSessionId: ownerUserId ? undefined : guestSessionId,
         }),
       });
 
       if (!presignResponse.ok) throw new Error("Could not get upload URL");
 
-      const { uploadUrl, fileId, key } = await presignResponse.json();
+      const { uploadUrl, fileId, key, uploadHeaders } = await presignResponse.json();
       activeFileIdRef.current = fileId;
       setSelectedHistoryItem(null);
       setFetchingPreview(false);
@@ -311,7 +327,7 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
 
       const uploadResponse = await fetch(uploadUrl, {
         method: "PUT",
-        headers: { "Content-Type": file.type },
+        headers: uploadHeaders || { "Content-Type": file.type },
         body: file,
       });
 
@@ -321,6 +337,8 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
 
       setMetadata({
         fileId,
+        ownerUserId,
+        guestSessionId: ownerUserId ? undefined : guestSessionId,
         key,
         fileName: file.name,
         fileSize: file.size,
@@ -354,6 +372,8 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
     setResult(item);
     setMetadata({
       fileId: item.fileId,
+      ownerUserId: item.ownerUserId,
+      guestSessionId: item.guestSessionId,
       key: item.objectKey || "",
       fileName: item.originalFileName || item.fileId,
       fileSize: item.fileSize || 0,
@@ -430,7 +450,14 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
         setRefreshingHistory(true);
       }
 
-      const response = await fetch(`${apiUrl}/media/`);
+      const params = new URLSearchParams();
+      if (ownerUserId) {
+        params.set("ownerUserId", ownerUserId);
+      } else if (guestSessionId) {
+        params.set("guestSessionId", guestSessionId);
+      }
+
+      const response = await fetch(`${apiUrl}/media/?${params.toString()}`);
 
       if (!response.ok) return;
 

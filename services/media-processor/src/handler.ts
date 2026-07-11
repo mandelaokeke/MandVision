@@ -42,6 +42,8 @@ export const main = async (event: any) => {
       );
       const fileType = objectMetadata.ContentType || inferFileType(parsedObjectKey.originalFileName);
       const mediaType = getMediaType(fileType);
+      const ownerUserId = objectMetadata.Metadata?.owneruserid;
+      const guestSessionId = objectMetadata.Metadata?.guestsessionid;
 
       if (mediaType === "document") {
         const extraction = await extractDocumentText({
@@ -67,6 +69,8 @@ export const main = async (event: any) => {
           uploadedAt,
           processedAt,
           source: "S3_EVENT",
+          ownerUserId,
+          guestSessionId,
           extractionStatus: extraction.status,
           extractedText: extraction.text,
           textPreview: extraction.preview,
@@ -113,6 +117,8 @@ export const main = async (event: any) => {
           processedAt,
           labels,
           source: "S3_EVENT",
+          ownerUserId,
+          guestSessionId,
         };
 
         await writeMetadata(item);
@@ -136,6 +142,8 @@ export const main = async (event: any) => {
               ? error.message
               : "Media processing failed.",
           source: "S3_EVENT",
+          ownerUserId,
+          guestSessionId,
         };
 
         await writeMetadata(failedItem);

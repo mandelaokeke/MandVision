@@ -11,6 +11,10 @@ export const main = async (event: any) => {
     const fileName = body.fileName;
 
     const fileType = body.fileType || "application/octet-stream";
+    const ownerUserId =
+      typeof body.ownerUserId === "string" ? body.ownerUserId.trim() : "";
+    const guestSessionId =
+      typeof body.guestSessionId === "string" ? body.guestSessionId.trim() : "";
 
     if (!fileName) {
 
@@ -23,6 +27,18 @@ export const main = async (event: any) => {
     const safeFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
 
     const key = `uploads/${fileId}-${safeFileName}`;
+    const metadata: Record<string, string> = Object.fromEntries(
+      Object.entries({
+        owneruserid: ownerUserId || undefined,
+        guestsessionid: guestSessionId || undefined,
+      }).filter(([, value]) => value)
+    );
+    const uploadHeaders: Record<string, string> = {
+      "Content-Type": fileType,
+      ...Object.fromEntries(
+        Object.entries(metadata).map(([metadataKey, value]) => [`x-amz-meta-${metadataKey}`, value])
+      ),
+    };
 
     const command = new PutObjectCommand({
 
@@ -31,6 +47,8 @@ export const main = async (event: any) => {
       Key: key,
 
       ContentType: fileType,
+
+      Metadata: metadata,
 
     });
 
@@ -45,6 +63,8 @@ export const main = async (event: any) => {
       fileId,
 
       expiresIn: 300,
+
+      uploadHeaders,
 
     });
 
@@ -79,4 +99,3 @@ function response(statusCode: number, body: object) {
   };
 
 }
-

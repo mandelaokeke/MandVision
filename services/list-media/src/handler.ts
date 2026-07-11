@@ -18,11 +18,29 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "OPTIONS,GET",
 };
 
-export const main = async () => {
+export const main = async (event: any) => {
   try {
+    const ownerUserId = event.queryStringParameters?.ownerUserId?.trim();
+    const guestSessionId = event.queryStringParameters?.guestSessionId?.trim();
+
+    if (!ownerUserId && !guestSessionId) {
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ items: [] }),
+      };
+    }
+
     const result = await docClient.send(
       new ScanCommand({
         TableName: process.env.METADATA_TABLE_NAME!,
+        FilterExpression: ownerUserId ? "#ownerUserId = :ownerUserId" : "#guestSessionId = :guestSessionId",
+        ExpressionAttributeNames: ownerUserId
+          ? { "#ownerUserId": "ownerUserId" }
+          : { "#guestSessionId": "guestSessionId" },
+        ExpressionAttributeValues: ownerUserId
+          ? { ":ownerUserId": ownerUserId }
+          : { ":guestSessionId": guestSessionId },
         Limit: 50,
       })
     );

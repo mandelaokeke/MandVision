@@ -22,8 +22,10 @@ export type DashboardUser = {
 };
 
 const SESSION_STORAGE_KEY = "mandvision.dashboardUser";
+const GUEST_SESSION_STORAGE_KEY = "mandvision.guestSessionId";
 
 export function useDashboardSession() {
+  const [guestSessionId, setGuestSessionId] = useState(() => getOrCreateGuestSessionId());
   const [user, setUser] = useState<DashboardUser | null>(() => {
     if (typeof window === "undefined") return null;
 
@@ -157,6 +159,7 @@ export function useDashboardSession() {
       });
 
       setUser(buildDashboardUser(normalizedUsername, normalizedEmail, displayName, session));
+      clearGuestSessionId();
       setAuthStatus("Signed in.");
       return true;
     } catch (error) {
@@ -221,6 +224,7 @@ export function useDashboardSession() {
     }
 
     setUser(null);
+    setGuestSessionId(resetGuestSessionId());
   }
 
   async function deleteAccount() {
@@ -230,6 +234,7 @@ export function useDashboardSession() {
     try {
       await deleteCognitoUser(user?.accessToken);
       setUser(null);
+      setGuestSessionId(resetGuestSessionId());
       setAuthStatus("Account deleted.");
     } catch (error) {
       setAuthError(getAuthErrorMessage(error));
@@ -240,6 +245,7 @@ export function useDashboardSession() {
 
   return {
     user,
+    guestSessionId,
     signedIn: Boolean(user),
     cognitoConfigured: isCognitoConfigured(),
     authLoading,
@@ -253,6 +259,43 @@ export function useDashboardSession() {
     signOut,
     deleteAccount,
   };
+}
+
+function getOrCreateGuestSessionId() {
+  if (typeof window === "undefined") return "";
+
+  try {
+    const existingGuestSessionId = window.sessionStorage.getItem(GUEST_SESSION_STORAGE_KEY);
+    if (existingGuestSessionId) return existingGuestSessionId;
+
+    return resetGuestSessionId();
+  } catch (error) {
+    console.error("Could not load guest session", error);
+    return `guest-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+function resetGuestSessionId() {
+  const nextGuestSessionId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? `guest-${crypto.randomUUID()}`
+      : `guest-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  try {
+    window.sessionStorage.setItem(GUEST_SESSION_STORAGE_KEY, nextGuestSessionId);
+  } catch (error) {
+    console.error("Could not save guest session", error);
+  }
+
+  return nextGuestSessionId;
+}
+
+function clearGuestSessionId() {
+  try {
+    window.sessionStorage.removeItem(GUEST_SESSION_STORAGE_KEY);
+  } catch (error) {
+    console.error("Could not clear guest session", error);
+  }
 }
 
 function buildDashboardUser(
