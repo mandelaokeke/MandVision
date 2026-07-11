@@ -50,7 +50,7 @@ export default function DashboardPage() {
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href="#access"
+                href="/upload"
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 text-sm font-semibold text-[#04100a] transition hover:bg-emerald-300"
               >
                 Get started

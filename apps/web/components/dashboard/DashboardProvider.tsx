@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, ReactNode, useContext, useMemo, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ImageDetailsModal } from "@/components/dashboard/ImageDetailsModal";
 import { useDashboardSession } from "@/hooks/useDashboardSession";
 import { useUpload } from "@/hooks/useUpload";
@@ -23,29 +23,45 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const upload = useUpload({ ownerUserId: session.user?.id });
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [historyFilter, setHistoryFilter] = useState("");
+  const currentUserId = session.user?.id ?? null;
+  const previousUserIdRef = useRef<string | null | undefined>(undefined);
 
   const dashboardItems = useMemo(
     () =>
       session.user
-        ? upload.history.filter(
-            (item) => upload.mediaOwners[item.fileId] === session.user?.id
-          )
-        : upload.history,
+        ? upload.history.filter((item) => getMediaOwner(item, upload.mediaOwners) === session.user?.id)
+        : upload.history.filter((item) => !getMediaOwner(item, upload.mediaOwners)),
     [session.user, upload.history, upload.mediaOwners]
   );
 
   const activeItem = upload.selectedHistoryItem ?? upload.result;
+  const activeItemOwner = activeItem ? getMediaOwner(activeItem, upload.mediaOwners) : undefined;
   const activeItemVisible =
     !activeItem ||
-    !session.user ||
-    upload.mediaOwners[activeItem.fileId] === session.user.id;
+    (session.user ? activeItemOwner === session.user.id : !activeItemOwner);
   const visibleActiveItem = activeItemVisible ? activeItem : null;
+  const metadataOwner = upload.metadata
+    ? upload.mediaOwners[upload.metadata.fileId]
+    : undefined;
   const visibleMetadata =
     !upload.metadata ||
-    !session.user ||
-    upload.mediaOwners[upload.metadata.fileId] === session.user.id
+    (session.user ? metadataOwner === session.user.id : !metadataOwner)
       ? upload.metadata
       : null;
+
+  useEffect(() => {
+    const previousUserId = previousUserIdRef.current;
+
+    if (previousUserId !== undefined && previousUserId !== currentUserId) {
+      upload.clearActiveMedia();
+      setDetailsOpen(false);
+      setHistoryFilter("");
+    }
+
+    previousUserIdRef.current = currentUserId;
+    // The reset should run only when the auth identity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
 
   return (
     <DashboardContext.Provider
@@ -74,6 +90,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       />
     </DashboardContext.Provider>
   );
+}
+
+function getMediaOwner(
+  item: { fileId: string; ownerUserId?: string },
+  mediaOwners: Record<string, string>
+) {
+  return item.ownerUserId || mediaOwners[item.fileId];
 }
 
 export function useDashboard() {

@@ -437,6 +437,14 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
       const data = (await response.json()) as { items?: MediaResult[] };
       const nextHistory = data.items || [];
       setHistory(nextHistory);
+      setMediaOwners((currentOwners) => ({
+        ...currentOwners,
+        ...Object.fromEntries(
+          nextHistory
+            .filter((item) => item.ownerUserId)
+            .map((item) => [item.fileId, item.ownerUserId as string])
+        ),
+      }));
 
       const activeFileId = activeFileIdRef.current;
 
@@ -699,6 +707,18 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
     });
   }
 
+  function clearActiveMedia() {
+    activeFileIdRef.current = null;
+    setFile(null);
+    setPreviewUrl(null);
+    setMetadata(null);
+    setResult(null);
+    setSelectedHistoryItem(null);
+    setFetchingPreview(false);
+    setStage("idle");
+    setStatus("Choose a JPG, PNG, PDF, DOC, or DOCX file to begin.");
+  }
+
   return {
     file,
     previewUrl,
@@ -725,6 +745,7 @@ export function useUpload({ ownerUserId }: { ownerUserId?: string } = {}) {
     fetchHistory,
     fetchPreviewUrl,
     selectHistoryItem,
+    clearActiveMedia,
     selectedHistoryItem,
     setSelectedHistoryItem,
   };

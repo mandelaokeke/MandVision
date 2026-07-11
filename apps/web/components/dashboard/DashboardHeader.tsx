@@ -6,19 +6,21 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Bot, House, Images, Menu, Upload, X } from "lucide-react";
+import { Bot, House, Images, Menu, Upload, UserRound, X } from "lucide-react";
 import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
+import { useDashboard } from "@/components/dashboard/DashboardProvider";
 
 const navItems = [
   { href: "/", label: "Home", icon: House },
-  { href: "/library", label: "Library", icon: Images },
   { href: "/upload", label: "Upload", icon: Upload },
+  { href: "/library", label: "Library", icon: Images },
   { href: "/ask", label: "VisoAI", icon: Bot },
 ];
 
 export function DashboardHeader() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { session } = useDashboard();
 
   return (
     <header className="border-b border-white/10 bg-[#070b10]/95 px-4 py-4 backdrop-blur sm:px-6 sm:py-5">
@@ -61,6 +63,18 @@ export function DashboardHeader() {
           </button>
 
           <div className="hidden items-center gap-3 md:flex">
+            {session.user ? (
+              <div className="inline-flex h-9 items-center gap-2 rounded-lg border border-emerald-400/40 bg-emerald-400/15 px-3 text-sm font-semibold text-emerald-100">
+                <UserRound className="h-4 w-4" />
+                Signed in: {session.user.name}
+              </div>
+            ) : (
+              <div className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm font-medium text-slate-300">
+                <UserRound className="h-4 w-4" />
+                Guest mode
+              </div>
+            )}
+
             <nav className="flex flex-wrap items-center gap-2">
               {navItems.map((item) => (
                 <HeaderNavLink
@@ -77,6 +91,17 @@ export function DashboardHeader() {
 
         {menuOpen ? (
           <div className="mt-4 grid gap-2 rounded-2xl border border-white/10 bg-black/20 p-3 md:hidden">
+            <div
+              className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-semibold ${
+                session.user
+                  ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-100"
+                  : "border-white/10 bg-white/[0.03] text-slate-300"
+              }`}
+            >
+              <UserRound className="h-4 w-4" />
+              {session.user ? `Signed in: ${session.user.name}` : "Guest mode"}
+            </div>
+
             {navItems.map((item) => {
               const active =
                 item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
