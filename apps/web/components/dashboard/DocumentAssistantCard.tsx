@@ -27,10 +27,10 @@ type ChatMessage = {
 };
 
 const quickQuestions = [
-  "How are you?",
-  "What can VisoAI help with?",
-  "Compare two documents",
-  "Which documents mention an email?",
+  "What does this system do?",
+  "What objects were detected?",
+  "Does this image show a bag?",
+  "What should I review first?",
 ];
 
 export function DocumentAssistantCard({
@@ -38,11 +38,13 @@ export function DocumentAssistantCard({
   selectedItem,
   onSelectItem,
   onFilterTermChange,
+  compact = false,
 }: {
   items: MediaResult[];
   selectedItem?: MediaResult | null;
   onSelectItem: (item: MediaResult) => void;
   onFilterTermChange: (term: string) => void;
+  compact?: boolean;
 }) {
   const [question, setQuestion] = useState("");
   const [searchSelectedOnly, setSearchSelectedOnly] = useState(false);
@@ -50,11 +52,11 @@ export function DocumentAssistantCard({
     {
       id: "welcome",
       role: "assistant",
-      text: "Hi, I’m VisoAI. I can chat with you, explain how MandVision works, and answer questions about your processed documents. How can I help you today?",
+      text: "Hi, I’m VisoAI. Select an uploaded image or document, then ask what MandVision detected or what details need review.",
       answer: {
         question: "welcome",
         summary:
-          "Hi, I’m VisoAI. I can chat with you, explain how MandVision works, and answer questions about your processed documents. How can I help you today?",
+          "Hi, I’m VisoAI. Select an uploaded image or document, then ask what MandVision detected or what details need review.",
         mode: "chat",
         matches: [],
       },
@@ -75,13 +77,18 @@ export function DocumentAssistantCard({
     (getExtractedText(selectedItem) || getInsightValues(selectedItem).length > 0)
       ? selectedItem
       : null;
+  const selectedImage =
+    selectedItem?.mediaType === "image" && selectedItem.labels?.length ? selectedItem : null;
   const searchableDocuments = useMemo(
     () => (searchSelectedOnly && selectedDocument ? [selectedDocument] : documents),
     [documents, searchSelectedOnly, selectedDocument]
   );
   const suggestedQuestions = useMemo(
-    () => buildSuggestedQuestions(selectedDocument),
-    [selectedDocument]
+    () =>
+      selectedImage
+        ? buildImageSuggestedQuestions(selectedImage)
+        : buildSuggestedQuestions(selectedDocument),
+    [selectedDocument, selectedImage]
   );
   const promptSuggestions = useMemo(
     () => Array.from(new Set([...suggestedQuestions, ...quickQuestions])).slice(0, 6),
@@ -106,6 +113,11 @@ export function DocumentAssistantCard({
     const instantAnswer = buildConversationalAnswer(cleanQuestion);
     if (instantAnswer) {
       addAssistantMessage(instantAnswer);
+      return;
+    }
+
+    if (selectedImage) {
+      addAssistantMessage(buildImageAnswer(cleanQuestion, selectedImage));
       return;
     }
 
@@ -217,7 +229,7 @@ export function DocumentAssistantCard({
   }
 
   return (
-    <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
+    <section className={compact ? "" : "mx-auto max-w-7xl px-4 pt-6 sm:px-6"}>
       <div className="rounded-2xl border border-white/10 bg-[#0d131c] p-4 text-white shadow-2xl shadow-black/20 sm:p-6">
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 gap-4">
@@ -230,12 +242,16 @@ export function DocumentAssistantCard({
               </p>
               <h2 className="mt-1 text-xl font-semibold tracking-tight">VisoAI</h2>
               <p className="mt-1 text-sm text-slate-400">
-                Chat naturally, ask about MandVision, or compare and search processed documents.
+                Ask about the selected image, detected objects, or processed document text.
               </p>
             </div>
           </div>
           <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300">
-            VisoAI can read {searchableDocuments.length} doc{searchableDocuments.length === 1 ? "" : "s"}
+            {selectedImage
+              ? `${selectedImage.labels?.length || 0} image labels ready`
+              : `VisoAI can read ${searchableDocuments.length} doc${
+                  searchableDocuments.length === 1 ? "" : "s"
+                }`}
           </div>
         </div>
 
@@ -366,6 +382,11 @@ function ChatBubble({
               <Sparkles className="h-3 w-3" />
               Document answer
             </span>
+          ) : answer?.mode === "image" ? (
+            <span className="ai-answer-badge inline-flex items-center gap-1.5 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-2 py-0.5 text-[11px] font-medium text-emerald-100">
+              <Sparkles className="h-3 w-3" />
+              Image labels
+            </span>
           ) : answer?.mode === "fallback" ? (
             <span className="ai-answer-badge inline-flex items-center gap-1.5 rounded-full border border-sky-300/25 bg-sky-300/10 px-2 py-0.5 text-[11px] font-medium text-sky-100">
               <FileSearch className="h-3 w-3" />
@@ -451,6 +472,84 @@ function buildSuggestedQuestions(selectedDocument: MediaResult | null) {
   return Array.from(questions).slice(0, 3);
 }
 
+function buildImageSuggestedQuestions(selectedImage: MediaResult) {
+  const labels = getSortedLabels(selectedImage);
+  const topLabels = labels.slice(0, 3).map((label) => label.name).filter(Boolean);
+  const questions = new Set<string>();
+
+  questions.add("What objects were detected?");
+  questions.add("What should I review first?");
+
+  if (topLabels[0]) questions.add(`Does this image show ${topLabels[0]}?`);
+  if (topLabels[1]) questions.add(`Tell me about the ${topLabels[1]} in this image`);
+  if (topLabels[2]) questions.add(`Is there anything suspicious about ${topLabels[2]}?`);
+
+  return Array.from(questions).slice(0, 4);
+}
+
+function buildImageAnswer(question: string, image: MediaResult): AssistantAnswer {
+  const cleanQuestion = question.trim();
+  const labels = getSortedLabels(image);
+  const normalized = cleanQuestion.toLowerCase();
+  const topLabels = labels.slice(0, 8);
+  const labelNames = topLabels
+    .map((label) => `${label.name}${label.confidence ? ` (${Math.round(label.confidence)}%)` : ""}`)
+    .join(", ");
+  const terms = getImageQuestionTerms(cleanQuestion);
+  const matchingLabels = labels.filter((label) => {
+    const name = label.name?.toLowerCase() || "";
+    return terms.some((term) => name.includes(term) || term.includes(name));
+  });
+  const isPresenceQuestion = /\b(do you see|does|is there|are there|can you see|see|show|contains?|find|identify)\b/.test(normalized);
+  const isDescriptionQuestion = /\b(describe|pattern|type|kind|color|wearing|looks like|tell me about)\b/.test(normalized);
+  const isRiskQuestion = /\b(blood|weapon|knife|gun|injury|suspicious|danger|hazard|threat|evidence)\b/.test(normalized);
+  let summary: string;
+  let snippets: string[] = [];
+
+  if (!labels.length) {
+    summary =
+      "I do not have image labels for this file yet. Select a processed image with detected objects, then ask me what appears in it.";
+  } else if (matchingLabels.length) {
+    const matches = matchingLabels
+      .slice(0, 5)
+      .map((label) => `${label.name}${label.confidence ? ` at ${Math.round(label.confidence)}% confidence` : ""}`)
+      .join(", ");
+    summary = `Based on the processed labels, yes: I found ${matches}.`;
+    snippets = matchingLabels
+      .slice(0, 4)
+      .map((label) => `${label.name}${label.confidence ? ` detected at ${Math.round(label.confidence)}% confidence` : ""}`);
+
+    if (isDescriptionQuestion) {
+      summary +=
+        " I can confirm the detected object category from the current analysis, but detailed visual descriptions like fabric pattern, exact color, or condition need a deeper vision model pass.";
+    }
+  } else if (isPresenceQuestion || isRiskQuestion) {
+    summary = `I do not see a matching label for that in the current image analysis. The strongest detections are ${labelNames || "not available"}.`;
+
+    if (isRiskQuestion) {
+      summary +=
+        " Treat this as a first-pass screening result, not a final forensic conclusion. A human reviewer should verify sensitive evidence such as blood, weapons, or injury indicators.";
+    }
+  } else {
+    summary = `The top detected objects are ${labelNames || "not available"}. You can ask me whether a specific object appears, or what labels should be reviewed first.`;
+  }
+
+  return {
+    question: cleanQuestion,
+    summary,
+    mode: "image",
+    matches: snippets.length
+      ? [
+          {
+            item: image,
+            score: matchingLabels.length,
+            snippets,
+          },
+        ]
+      : [],
+  };
+}
+
 function buildAnswer(
   question: string,
   documents: MediaResult[],
@@ -490,13 +589,13 @@ function buildAppAnswer(question: string): AssistantAnswer | null {
 
   if (/\b(visoai|ai|assistant|ask|question|summary|summarize|source|snippet)\b/.test(normalized)) {
     return makeAnswer(
-      "VisoAI answers questions about MandVision and your processed documents. You can ask for summaries, emails, dates, IDs, invoice details, or where a detail appears in an uploaded PDF or Word document."
+      "VisoAI answers questions about MandVision and the selected upload. For images, it can reason from detected object labels. For processed documents, it can search extracted text for summaries, dates, IDs, emails, and other details."
     );
   }
 
   if (/\b(image|images|picture|pictures|photo|photos|jpg|jpeg|png|scan pictures|scan photos|scan images|rekognition|label|labels|object|objects)\b/.test(normalized)) {
     return makeAnswer(
-      "Yes. MandVision can scan JPG and PNG images with Amazon Rekognition, then show detected labels, confidence scores, image previews, analytics, and history in your Library. VisoAI is strongest with extracted document text, but the app still analyzes images separately."
+      "Yes. MandVision scans JPG and PNG images, identifies visible objects with confidence scores, and stores the result in Library. Select an image in Library, then ask VisoAI whether a specific object appears or what labels should be reviewed first."
     );
   }
 
@@ -520,7 +619,7 @@ function buildAppAnswer(question: string): AssistantAnswer | null {
 
   if (/\b(app|mandvision|help|how do i|what can|where do i)\b/.test(normalized)) {
     return makeAnswer(
-      "MandVision has four main areas: Dashboard for analytics, Upload for adding files, Library for managing processed media, and VisoAI for asking questions about the app or your processed documents."
+      "MandVision is an evidence image intelligence workspace. Start in Library: upload a file, review detected objects or extracted text, then ask VisoAI focused questions about the selected upload."
     );
   }
 
@@ -631,14 +730,20 @@ function noDocumentAnswer(question: string) {
   const normalized = question.toLowerCase();
 
   if (/\b(image|images|picture|pictures|photo|photos|jpg|jpeg|png|rekognition|label|labels|object|objects)\b/.test(normalized)) {
-    return "Yes. MandVision can scan images too. Upload a JPG or PNG and it will detect objects and labels with confidence scores, then add the results to your dashboard and Library. I only need processed documents when you want me to answer from extracted text.";
+    return "Yes. MandVision can scan images. Upload a JPG or PNG, select the processed image in Library, and I can answer from the detected object labels.";
   }
 
   if (/\b(pdf|pdfs|doc|docs|docx|document|documents|extract|summary|summarize|compare)\b/.test(normalized)) {
     return "I can help with documents after you upload and process a PDF, DOC, or DOCX in this account. Right now I don’t have any readable documents for your user, so I can explain the workflow but I won’t reference files that are not yours.";
   }
 
-  return "I can chat with you and explain MandVision now. Once you upload and process images or documents in this account, I can help with labels, summaries, comparisons, and searches. How can I help you today?";
+  return "I can explain MandVision now. Once you upload and select an image or document in Library, I can help with object labels, summaries, comparisons, and searches. How can I help you today?";
+}
+
+function getSortedLabels(item: MediaResult) {
+  return [...(item.labels || [])]
+    .filter((label) => label.name)
+    .sort((first, second) => (second.confidence || 0) - (first.confidence || 0));
 }
 
 function getSearchTerms(question: string) {
@@ -648,6 +753,31 @@ function getSearchTerms(question: string) {
     .split(/\s+/)
     .map((term) => term.trim())
     .filter((term) => term.length > 2 && !stopWords.has(term));
+}
+
+function getImageQuestionTerms(question: string) {
+  const baseTerms = getSearchTerms(question);
+  const aliasMap: Record<string, string[]> = {
+    bag: ["bag", "handbag", "purse", "backpack", "luggage", "accessory"],
+    purse: ["purse", "handbag", "bag", "accessory"],
+    handbag: ["handbag", "purse", "bag", "accessory"],
+    sweater: ["sweater", "clothing", "apparel", "shirt", "top", "person"],
+    hoodie: ["hoodie", "clothing", "apparel", "shirt", "top", "person"],
+    jacket: ["jacket", "coat", "clothing", "apparel", "person"],
+    shoe: ["shoe", "footwear", "sneaker", "boot"],
+    shoes: ["shoe", "footwear", "sneaker", "boot"],
+    blood: ["blood", "stain", "red"],
+    weapon: ["weapon", "gun", "knife"],
+    car: ["car", "vehicle", "automobile"],
+    phone: ["phone", "mobile phone", "cell phone", "electronics"],
+  };
+  const expandedTerms = new Set(baseTerms);
+
+  for (const term of baseTerms) {
+    aliasMap[term]?.forEach((alias) => expandedTerms.add(alias));
+  }
+
+  return Array.from(expandedTerms);
 }
 
 function findSnippet(text: string, term: string) {

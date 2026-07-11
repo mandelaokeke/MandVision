@@ -6,14 +6,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { BarChart3, Bot, Images, Menu, Upload, X } from "lucide-react";
+import { Bot, Images, LogIn, Menu, Upload, X } from "lucide-react";
 import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: BarChart3 },
-  { href: "/upload", label: "Upload", icon: Upload },
   { href: "/library", label: "Library", icon: Images },
+  { href: "/upload", label: "Upload", icon: Upload },
   { href: "/ask", label: "VisoAI", icon: Bot },
+  { href: "/", label: "Sign in", icon: LogIn },
 ];
 
 export function DashboardHeader() {
@@ -25,7 +25,7 @@ export function DashboardHeader() {
       <div className="mx-auto max-w-7xl">
         <div className="flex items-center justify-between gap-4">
           <Link
-            href="/"
+            href="/library"
             className="flex min-w-0 items-center gap-3 rounded-xl transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/50 sm:gap-4"
             aria-label="Go to MandVision home"
           >

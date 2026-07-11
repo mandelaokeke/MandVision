@@ -17,6 +17,7 @@ export function AuthPanel({
   onConfirmPasswordReset,
   onSignOut,
   onDeleteAccount,
+  compact = false,
 }: {
   user: DashboardUser | null;
   cognitoConfigured: boolean;
@@ -34,6 +35,7 @@ export function AuthPanel({
   }) => Promise<boolean>;
   onSignOut: () => Promise<void>;
   onDeleteAccount: () => Promise<void>;
+  compact?: boolean;
 }) {
   const [mode, setMode] = useState<"signup" | "confirm" | "signin" | "forgot" | "reset">("signup");
   const [username, setUsername] = useState("");
@@ -49,7 +51,7 @@ export function AuthPanel({
 
   if (user) {
     return (
-      <section className="mx-auto max-w-7xl px-6 pt-6">
+      <section className={compact ? "p-4" : "mx-auto max-w-7xl px-6 pt-6"}>
         <div className="flex flex-col gap-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-5 text-white md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
@@ -92,8 +94,12 @@ export function AuthPanel({
   }
 
   return (
-    <section className="mx-auto max-w-7xl px-6 pt-6">
-      <div className="grid gap-4 rounded-2xl border border-white/10 bg-[#0d131c] p-5 text-white shadow-2xl shadow-black/20 lg:grid-cols-[1fr_auto] lg:items-end">
+    <section className={compact ? "p-4" : "mx-auto max-w-7xl px-6 pt-6"}>
+      <div
+        className={`grid gap-4 rounded-2xl border border-white/10 bg-[#0d131c] p-5 text-white shadow-2xl shadow-black/20 ${
+          compact ? "" : "lg:grid-cols-[1fr_auto] lg:items-end"
+        }`}
+      >
         <div>
           <p className="text-sm font-semibold text-emerald-300">
             {isConfirm
@@ -112,8 +118,8 @@ export function AuthPanel({
               : isReset
               ? "Enter the reset code and choose a new password."
               : isSignup
-              ? "You can browse the public analytics first. Sign up to switch MandVision into your own file intelligence dashboard."
-              : "Sign in to view your personal uploads and analytics."}
+              ? "Create an account to upload images, review detected objects, and keep your evidence library organized."
+              : "Sign in to open your Library and continue reviewing processed evidence."}
           </p>
           {!cognitoConfigured ? (
             <p className="mt-2 rounded-lg border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
@@ -269,7 +275,9 @@ export function AuthPanel({
         ) : (
           <form
             className={`grid gap-3 ${
-              isSignup
+              compact
+                ? ""
+                : isSignup
                 ? "sm:grid-cols-[minmax(130px,1fr)_minmax(190px,1.2fr)_minmax(150px,1fr)_auto]"
                 : "sm:grid-cols-[minmax(160px,1fr)_minmax(150px,1fr)_auto]"
             }`}

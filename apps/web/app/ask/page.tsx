@@ -18,7 +18,7 @@ export default function AskPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white">VisoAI</h1>
           <p className="mt-1 text-sm text-slate-400">
-            Ask about MandVision or search across your processed documents.
+            Ask about the selected Library item, detected image labels, or extracted document text.
           </p>
         </div>
         <Link
