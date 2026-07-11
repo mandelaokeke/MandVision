@@ -1,7 +1,21 @@
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import crypto from "crypto";
+
+declare const process: {
+  env: {
+    INGEST_BUCKET_NAME?: string;
+    METADATA_TABLE_NAME?: string;
+  };
+};
+
 const s3 = new S3Client({});
+const dynamoClient = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
+const guestUploadLimit = 5;
+
 export const main = async (event: any) => {
 
   try {
@@ -20,6 +34,17 @@ export const main = async (event: any) => {
 
       return response(400, { message: "fileName is required" });
 
+    }
+
+    if (!ownerUserId && guestSessionId) {
+      const guestUploadCount = await countGuestUploads(guestSessionId);
+
+      if (guestUploadCount >= guestUploadLimit) {
+        return response(403, {
+          message: "Guest demo limit reached. Sign in to keep uploading and save your workspace.",
+          limit: guestUploadLimit,
+        });
+      }
     }
 
     const fileId = crypto.randomUUID();
@@ -74,6 +99,27 @@ export const main = async (event: any) => {
   }
 
 };
+
+async function countGuestUploads(guestSessionId: string) {
+  if (!process.env.METADATA_TABLE_NAME) return 0;
+
+  const result = await docClient.send(
+    new ScanCommand({
+      TableName: process.env.METADATA_TABLE_NAME,
+      FilterExpression: "#guestSessionId = :guestSessionId",
+      ExpressionAttributeNames: {
+        "#guestSessionId": "guestSessionId",
+      },
+      ExpressionAttributeValues: {
+        ":guestSessionId": guestSessionId,
+      },
+      Select: "COUNT",
+      Limit: guestUploadLimit,
+    })
+  );
+
+  return result.Count || 0;
+}
 
 function response(statusCode: number, body: object) {
 

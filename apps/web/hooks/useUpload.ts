@@ -64,6 +64,7 @@ type WebSocketMessage = {
 
 const FAVORITES_STORAGE_KEY = "mandvision.favoriteFileIds";
 const MEDIA_OWNERS_STORAGE_KEY = "mandvision.mediaOwners";
+const GUEST_UPLOAD_LIMIT = 5;
 const SUPPORTED_FILE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -287,6 +288,12 @@ export function useUpload({
       return;
     }
 
+    if (!ownerUserId && guestSessionId && history.length >= GUEST_UPLOAD_LIMIT) {
+      setStatus("Guest demo limit reached. Sign in to keep uploading and save your workspace.");
+      setStage("error");
+      return;
+    }
+
     try {
       setUploading(true);
       setStage("uploading");
@@ -309,7 +316,12 @@ export function useUpload({
         }),
       });
 
-      if (!presignResponse.ok) throw new Error("Could not get upload URL");
+      if (!presignResponse.ok) {
+        const errorBody = (await presignResponse.json().catch(() => null)) as {
+          message?: string;
+        } | null;
+        throw new Error(errorBody?.message || "Could not get upload URL");
+      }
 
       const { uploadUrl, fileId, key, uploadHeaders } = await presignResponse.json();
       activeFileIdRef.current = fileId;
@@ -358,7 +370,11 @@ export function useUpload({
     } catch (error) {
       console.error(error);
       setStage("error");
-      setStatus("Something went wrong during upload. Please try again.");
+      setStatus(
+        error instanceof Error && error.message
+          ? error.message
+          : "Something went wrong during upload. Please try again."
+      );
     } finally {
       setUploading(false);
     }

@@ -27,6 +27,7 @@ export class ApiStack extends cdk.Stack {
         handler: "main",
         environment: {
           INGEST_BUCKET_NAME: props.ingestBucket.bucketName,
+          METADATA_TABLE_NAME: props.metadataTable.tableName,
         },
       }
     );
@@ -138,6 +139,7 @@ export class ApiStack extends cdk.Stack {
     );
 
     props.ingestBucket.grantPut(presignLambda);
+    props.metadataTable.grantReadData(presignLambda);
     props.metadataTable.grantReadData(getMediaLambda);
     props.metadataTable.grantReadData(listMediaLambda);
     props.metadataTable.grantReadData(getPreviewUrlLambda);
