@@ -35,9 +35,6 @@ export const main = async (event: any) => {
     );
     const uploadHeaders: Record<string, string> = {
       "Content-Type": fileType,
-      ...Object.fromEntries(
-        Object.entries(metadata).map(([metadataKey, value]) => [`x-amz-meta-${metadataKey}`, value])
-      ),
     };
 
     const command = new PutObjectCommand({
