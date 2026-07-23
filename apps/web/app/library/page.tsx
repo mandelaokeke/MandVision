@@ -20,7 +20,7 @@ export default function LibraryPage() {
   const mediaType = (visibleActiveItem ?? visibleMetadata)?.mediaType;
 
   return (
-    <div className="mx-auto grid w-full max-w-[118rem] items-start gap-6 overflow-hidden px-4 py-6 sm:px-6 sm:py-8 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+    <div className="mx-auto grid w-full max-w-[112rem] items-start gap-5 overflow-hidden px-4 py-6 sm:px-6 sm:py-8 xl:grid-cols-[minmax(24rem,0.78fr)_minmax(0,1.22fr)]">
       <section className="min-w-0 space-y-6">
         <div className="min-w-0">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-300/80">
@@ -51,13 +51,13 @@ export default function LibraryPage() {
         />
       </section>
 
-      <aside className="min-w-0 space-y-6 xl:sticky xl:top-6">
-        <div className="flex justify-end">
+      <aside className="min-w-0 space-y-5 xl:sticky xl:top-24">
+        <div className="flex justify-start sm:justify-end">
           <button
             type="button"
             disabled={!visibleActiveItem}
             onClick={() => setDetailsOpen(true)}
-            className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 text-sm font-medium text-emerald-300 transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >
             View Details
           </button>

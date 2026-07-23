@@ -18,7 +18,7 @@ export default function UploadPage() {
       : undefined);
 
   return (
-    <div className="mx-auto grid max-w-7xl items-start gap-8 px-6 py-8 lg:grid-cols-[minmax(380px,0.9fr)_minmax(0,1.1fr)]">
+    <div className="mx-auto grid w-full max-w-7xl items-start gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:grid-cols-[minmax(360px,0.9fr)_minmax(0,1.1fr)]">
       <section className="min-w-0 space-y-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white">Upload</h1>

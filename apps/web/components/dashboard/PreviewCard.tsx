@@ -48,18 +48,18 @@ export function PreviewCard({
             <iframe
               src={previewUrl}
               title={fileName ? `${fileName} preview` : "PDF preview"}
-              className="h-80 w-full bg-white"
+              className="h-64 w-full bg-white sm:h-80"
             />
           ) : previewUrl && !isDocument ? (
             <img
               src={previewUrl}
               alt="Selected upload preview"
-              className="h-80 w-full object-contain bg-black/40"
+              className="h-64 w-full bg-black/40 object-contain sm:h-80"
             />
           ) : isDocument ? (
             <DocumentFace fileName={fileName} textPreview={textPreview} fileType={fileType} />
           ) : historicalSelected ? (
-            <div className="flex h-80 flex-col items-center justify-center px-8 text-center text-slate-400">
+            <div className="flex h-64 flex-col items-center justify-center px-6 text-center text-slate-400 sm:h-80 sm:px-8">
               <p className="font-semibold text-slate-200">
                 {previewLoading ? "Loading historical preview..." : "Historical upload selected"}
               </p>
@@ -70,7 +70,7 @@ export function PreviewCard({
               </p>
             </div>
           ) : (
-            <div className="flex h-80 items-center justify-center text-slate-500">
+            <div className="flex h-64 items-center justify-center text-slate-500 sm:h-80">
               File preview will appear here
             </div>
           )}
@@ -101,7 +101,7 @@ function DocumentFace({
     fileName?.toLowerCase().endsWith(".docx");
 
   return (
-    <div className="flex h-80 items-center justify-center bg-slate-950/80 p-5">
+    <div className="flex h-64 items-center justify-center bg-slate-950/80 p-4 sm:h-80 sm:p-5">
       <div className="h-full w-full max-w-sm overflow-hidden rounded-lg border border-slate-200/15 bg-slate-100 p-5 text-slate-900 shadow-2xl shadow-black/40">
         <div className="mb-4 flex items-center gap-3 border-b border-slate-300 pb-3">
           <FileText className="h-7 w-7 shrink-0 text-emerald-600" />

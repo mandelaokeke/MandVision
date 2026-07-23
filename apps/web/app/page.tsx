@@ -33,16 +33,16 @@ export default function DashboardPage() {
 
   return (
     <div className="pb-12">
-      <section className="mx-auto grid max-w-7xl gap-8 px-6 py-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(380px,0.75fr)] lg:items-start">
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(380px,0.75fr)] lg:items-start">
         <div className="space-y-8">
-          <div className="rounded-3xl border border-white/10 bg-[#0d131c] p-6 shadow-2xl shadow-black/20 sm:p-8">
+          <div className="rounded-3xl border border-white/10 bg-[#0d131c] p-5 shadow-2xl shadow-black/20 sm:p-8">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300/80">
               Security image intelligence
             </p>
-            <h1 className="mt-4 max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-5xl">
+            <h1 className="mt-4 max-w-4xl text-3xl font-bold tracking-tight text-white sm:text-5xl">
               Upload an image. Identify objects. Ask Viso what it sees.
             </h1>
-            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-300">
+            <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base sm:leading-8">
               MandVision is a review workspace for security and evidence media. Upload an
               image, let the system detect visible objects, then ask Viso focused questions
               like whether a blue purse appears, what type of sweater is visible, or whether a

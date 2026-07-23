@@ -14,7 +14,7 @@ export default function AskPage() {
 
   return (
     <div className="pb-10">
-      <section className="mx-auto flex max-w-7xl flex-col gap-3 px-6 pt-8 md:flex-row md:items-end md:justify-between">
+      <section className="mx-auto flex max-w-7xl flex-col gap-3 px-4 pt-6 sm:px-6 sm:pt-8 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white">VisoAI</h1>
           <p className="mt-1 text-sm text-slate-400">

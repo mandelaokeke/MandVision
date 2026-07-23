@@ -32,7 +32,7 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-[#070b10] text-white">
         <DashboardProvider>
-          <main className="min-h-screen">
+          <main className="min-h-screen overflow-x-clip">
             <DashboardHeader />
             {children}
           </main>

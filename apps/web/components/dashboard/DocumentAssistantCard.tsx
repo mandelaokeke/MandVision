@@ -249,7 +249,7 @@ export function DocumentAssistantCard({
 
       setAskingBackend(true);
 
-      const response = await fetch(`${apiUrl}/vision/ask?requestId=${Date.now()}`, {
+      const response = await fetch(`${apiUrl}/vision/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -291,11 +291,11 @@ export function DocumentAssistantCard({
   }
 
   return (
-    <section className={compact ? "" : "mx-auto max-w-[118rem] px-4 pt-6 sm:px-6"}>
-      <div className="rounded-2xl border border-white/10 bg-[#0d131c] p-4 text-white shadow-2xl shadow-black/20 sm:p-6">
-        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <section className={compact ? "" : "mx-auto max-w-6xl px-4 pt-6 sm:px-6"}>
+      <div className="rounded-2xl border border-white/10 bg-[#0d131c] p-3 text-white shadow-2xl shadow-black/20 sm:p-5">
+        <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-sky-300/30 bg-sky-300/10 text-sky-200">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-sky-300/30 bg-sky-300/10 text-sky-200">
               <Bot className="h-5 w-5" />
             </div>
             <div className="min-w-0">
@@ -308,7 +308,7 @@ export function DocumentAssistantCard({
               </p>
             </div>
           </div>
-          <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300">
+          <div className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300 sm:w-auto">
             {selectedImage
               ? `${selectedImage.labels?.length || 0} image label${
                   selectedImage.labels?.length === 1 ? "" : "s"
@@ -320,67 +320,63 @@ export function DocumentAssistantCard({
         </div>
 
         <div className="mt-5">
-          <div className="ai-chat-scroll max-h-[540px] space-y-4 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-4">
-            {messages.map((message) => (
-              <ChatBubble
-                key={message.id}
-                message={message}
-                onSelectItem={(item) => {
-                  onSelectItem(item);
-                  onFilterTermChange(item.originalFileName || item.fileId);
-                }}
-              />
-            ))}
-            {askingBackend ? (
-              <div className="ai-assistant-row flex items-start gap-3">
-                <div className="ai-assistant-avatar flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-300/30 bg-sky-300/10 text-sky-100">
-                  <Bot className="h-4 w-4" />
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-2 sm:p-3">
+            <div className="ai-chat-scroll max-h-[540px] space-y-4 overflow-y-auto px-1 py-2 sm:px-2">
+              {messages.map((message) => (
+                <ChatBubble
+                  key={message.id}
+                  message={message}
+                  onSelectItem={(item) => {
+                    onSelectItem(item);
+                    onFilterTermChange(item.originalFileName || item.fileId);
+                  }}
+                />
+              ))}
+              {askingBackend ? (
+                <div className="ai-assistant-row flex items-end gap-2 sm:gap-3">
+                  <div className="ai-assistant-avatar flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-sky-300/30 bg-sky-300/10 text-sky-100 sm:h-9 sm:w-9">
+                    <Bot className="h-4 w-4" />
+                  </div>
+                  <div className="ai-assistant-bubble min-w-0 max-w-[88%] rounded-3xl rounded-bl-md border border-sky-300/20 bg-[#0d1722] px-4 py-3 text-sm text-slate-100 shadow-lg shadow-black/10 sm:max-w-[76%]">
+                    <div className="mb-2 text-xs font-medium text-sky-200">VisoAI</div>
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-200" />
+                      {selectedImage
+                        ? "Looking closely at the selected image..."
+                        : "Reading the relevant document context..."}
+                    </span>
+                  </div>
                 </div>
-                <div className="ai-assistant-bubble min-w-0 flex-1 rounded-2xl rounded-tl-md border border-sky-300/20 bg-[#0d1722] p-4 text-sm text-slate-100">
-                  <div className="mb-2 text-xs font-medium text-sky-200">VisoAI</div>
-                  {selectedImage ? "Thinking about the selected image..." : "Reading your processed documents..."}
+              ) : null}
+            </div>
+
+            <div className="mt-2 rounded-2xl border border-white/10 bg-[#070b10]/80 p-3">
+              {!hasUserMessages ? (
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  {selectedDocument ? (
+                    <button
+                      type="button"
+                      onClick={summarizeSelectedDocument}
+                      disabled={askingBackend}
+                      className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1.5 text-xs font-medium text-emerald-100 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Summarize this document
+                    </button>
+                  ) : null}
+                  {promptSuggestions.map((quickQuestion) => (
+                    <button
+                      key={quickQuestion}
+                      type="button"
+                      onClick={() => askQuestion(quickQuestion)}
+                      className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-sky-300/40 hover:bg-sky-300/10 hover:text-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {quickQuestion}
+                    </button>
+                  ))}
                 </div>
-              </div>
-            ) : null}
-            <div className="border-t border-white/10 pt-4">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                {selectedDocument ? (
-                  <>
-                    {!hasUserMessages ? (
-                      <button
-                        type="button"
-                        onClick={summarizeSelectedDocument}
-                        disabled={askingBackend}
-                        className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1.5 text-xs font-medium text-emerald-100 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Summarize this document
-                      </button>
-                    ) : null}
-                    <label className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-300">
-                      <input
-                        type="checkbox"
-                        checked={searchSelectedOnly}
-                        onChange={(event) => setSearchSelectedOnly(event.target.checked)}
-                        className="h-3.5 w-3.5 accent-sky-300"
-                      />
-                      Search selected only
-                    </label>
-                  </>
-                ) : null}
-                {!hasUserMessages
-                  ? promptSuggestions.map((quickQuestion) => (
-                      <button
-                        key={quickQuestion}
-                        type="button"
-                        onClick={() => askQuestion(quickQuestion)}
-                        className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-sky-300/40 hover:bg-sky-300/10 hover:text-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {quickQuestion}
-                      </button>
-                    ))
-                  : null}
-              </div>
+              ) : null}
+
               <form
                 className="flex flex-col gap-3 sm:flex-row"
                 onSubmit={(event) => {
@@ -394,18 +390,30 @@ export function DocumentAssistantCard({
                     value={question}
                     onChange={(event) => setQuestion(event.target.value)}
                     placeholder="Message VisoAI..."
-                    className="h-11 w-full rounded-lg border border-white/10 bg-black/20 px-3 pl-9 text-sm text-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/40"
+                    className="h-11 w-full rounded-xl border border-white/10 bg-black/20 px-3 pl-9 text-sm text-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/40"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={!question.trim()}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-sky-300/30 bg-sky-300/10 px-4 text-sm font-medium text-sky-200 transition hover:bg-sky-300/20 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-sky-300/30 bg-sky-300/10 px-4 text-sm font-medium text-sky-200 transition hover:bg-sky-300/20 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Send className="h-4 w-4" />
                   {askingBackend ? "Thinking..." : "Send"}
                 </button>
               </form>
+
+              {selectedDocument ? (
+                <label className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={searchSelectedOnly}
+                    onChange={(event) => setSearchSelectedOnly(event.target.checked)}
+                    className="h-3.5 w-3.5 accent-sky-300"
+                  />
+                  Search selected document only
+                </label>
+              ) : null}
             </div>
           </div>
         </div>
@@ -424,7 +432,7 @@ function ChatBubble({
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="ai-user-bubble max-w-[82%] rounded-2xl rounded-tr-md bg-emerald-400/15 px-4 py-3 text-sm text-emerald-50">
+        <div className="ai-user-bubble max-w-[86%] rounded-3xl rounded-br-md bg-emerald-500 px-4 py-3 text-sm font-medium text-white shadow-xl shadow-emerald-950/20 sm:max-w-[72%]">
           {message.text}
         </div>
       </div>
@@ -434,11 +442,11 @@ function ChatBubble({
   const answer = message.answer;
 
   return (
-    <div className="ai-assistant-row flex items-start gap-3">
-      <div className="ai-assistant-avatar flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-300/30 bg-sky-300/10 text-sky-100">
+    <div className="ai-assistant-row flex items-end gap-2 sm:gap-3">
+      <div className="ai-assistant-avatar flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-sky-300/30 bg-sky-300/10 text-sky-100 sm:h-9 sm:w-9">
         <Bot className="h-4 w-4" />
       </div>
-      <div className="ai-assistant-bubble min-w-0 flex-1 rounded-2xl rounded-tl-md border border-sky-300/20 bg-[#0d1722] p-4 text-sm text-slate-100">
+      <div className="ai-assistant-bubble min-w-0 max-w-[88%] rounded-3xl rounded-bl-md border border-sky-300/20 bg-[#0d1722] px-4 py-3 text-sm text-slate-100 shadow-lg shadow-black/10 sm:max-w-[76%]">
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <span className="ai-assistant-name text-xs font-semibold text-sky-200">VisoAI</span>
           {answer?.mode === "vision" ? (

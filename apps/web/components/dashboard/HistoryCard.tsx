@@ -208,8 +208,8 @@ export function HistoryCard({
   return (
     <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[#0d131c] text-white shadow-2xl shadow-black/20">
       <div className="space-y-4 p-4 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-emerald-300 sm:shrink-0">
+        <div className="grid gap-4 sm:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-start">
+          <div className="w-fit rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-emerald-300 sm:shrink-0">
             <Images className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
@@ -218,7 +218,7 @@ export function HistoryCard({
               {totalCount} files • {processedCount} processed • {pendingCount} pending • {favoriteCount} favorites
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 sm:col-start-2 lg:col-start-auto">
             {onRefresh ? (
               <button
                 type="button"
@@ -260,44 +260,45 @@ export function HistoryCard({
         </div>
 
         <div className="rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <button
               type="button"
               onClick={() => setFiltersOpen((current) => !current)}
-              className="flex items-center gap-2 text-sm font-semibold text-slate-200 transition hover:text-white"
+              className="flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-200 transition hover:text-white"
             >
               <Filter className="h-4 w-4 text-emerald-300" />
-              Advanced Filters
+              <span>Advanced Filters</span>
               <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs font-medium text-slate-400">
                 {filtersOpen ? "Hide" : "Show"}
               </span>
             </button>
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+            <div className="grid grid-cols-2 gap-2 min-[520px]:grid-cols-3 lg:flex lg:items-center">
               {onReprocessPending ? (
                 <button
                   type="button"
                   onClick={() => onReprocessPending(filteredPendingItems)}
                   disabled={!filteredPendingItems.length || reprocessingPending}
-                  className="inline-flex min-w-0 items-center justify-center gap-2 rounded-lg border border-amber-300/30 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex min-w-0 items-center justify-center gap-2 rounded-lg border border-amber-300/30 px-3 py-2 text-xs font-medium leading-4 text-amber-200 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <RotateCcw className={`h-3.5 w-3.5 ${reprocessingPending ? "animate-spin" : ""}`} />
-                  Reprocess Pending
+                  <span>Reprocess</span>
                 </button>
               ) : null}
               <button
                 type="button"
                 onClick={exportFilteredItems}
                 disabled={!filteredItems.length}
-                className="inline-flex min-w-0 items-center justify-center gap-2 rounded-lg border border-emerald-400/30 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex min-w-0 items-center justify-center gap-2 rounded-lg border border-emerald-400/30 px-3 py-2 text-xs font-medium leading-4 text-emerald-300 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Download className="h-3.5 w-3.5" />
-                Export CSV
+                <span className="hidden sm:inline">Export CSV</span>
+                <span className="sm:hidden">Export</span>
               </button>
               <button
                 type="button"
                 onClick={resetFilters}
                 disabled={!filterTerm && !hasAdvancedFilters}
-                className="inline-flex min-w-0 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-emerald-400/30 hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+                className="col-span-2 inline-flex min-w-0 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-medium leading-4 text-slate-300 transition hover:border-emerald-400/30 hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-40 min-[520px]:col-span-1"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Reset
@@ -506,7 +507,7 @@ function HistoryListItem({
 
   return (
     <div
-      className={`flex min-w-0 flex-col gap-2 rounded-xl border p-2 transition hover:border-emerald-400/30 hover:bg-emerald-400/[0.03] sm:flex-row sm:items-stretch ${
+      className={`flex min-w-0 flex-col gap-2 rounded-xl border p-2 transition hover:border-emerald-400/30 hover:bg-emerald-400/[0.03] md:flex-row md:items-stretch ${
         selected ? "border-emerald-400/50 bg-emerald-400/[0.06]" : "border-white/10 bg-black/20"
       }`}
     >
@@ -515,7 +516,7 @@ function HistoryListItem({
         onClick={() => onSelectItem(item)}
         className="min-w-0 flex-1 rounded-lg p-2 text-left"
       >
-        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
           <div className="min-w-0">
             <p className="truncate font-semibold text-slate-100 sm:max-w-full">
               {item.originalFileName || item.fileId}
@@ -726,7 +727,7 @@ function LabelPills({
           {insightValues.map((value) => (
             <span
               key={`${item.fileId}-${value}`}
-              className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs text-emerald-200"
+              className="max-w-full truncate rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs text-emerald-200"
             >
               {value}
             </span>
@@ -747,7 +748,7 @@ function LabelPills({
         labels.map((label) => (
           <span
             key={`${item.fileId}-${label.name}`}
-            className="rounded-full border border-white/10 bg-slate-900 px-3 py-1 text-xs text-slate-300"
+            className="max-w-full truncate rounded-full border border-white/10 bg-slate-900 px-3 py-1 text-xs text-slate-300"
           >
             {label.name} {label.confidence ? `${Math.round(label.confidence)}%` : ""}
           </span>
@@ -802,7 +803,7 @@ function HistoryItemActions({
   }
 
   return (
-    <div className={horizontal ? "flex flex-1 gap-2" : "grid grid-cols-3 gap-2 sm:flex sm:w-11 sm:shrink-0 sm:flex-col"}>
+    <div className={horizontal ? "flex flex-1 gap-2" : "grid grid-cols-3 gap-2 md:flex md:w-11 md:shrink-0 md:flex-col"}>
       {onReprocessItem && canReprocess ? (
         <button
           type="button"

@@ -39,13 +39,13 @@ export function AnalyticsDashboard({
   const visibleLabels = showAllLabels ? analytics.topLabels : analytics.topLabels.slice(0, 5);
 
   return (
-    <section className="mx-auto max-w-7xl space-y-5 px-6 pt-8">
+    <section className="mx-auto max-w-7xl space-y-5 px-4 pt-6 sm:px-6 sm:pt-8">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-300/80">
             Analytics
           </p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-white">
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
             File Intelligence Dashboard
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-slate-400">
@@ -198,13 +198,13 @@ function MetricCard({
   onClick?: () => void;
 }) {
   const content = (
-    <CardContent className="flex items-center gap-4 p-6">
+    <CardContent className="flex items-center gap-4 p-5 sm:p-6">
       <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
         <Icon className="h-6 w-6" />
       </div>
       <div className="min-w-0">
         <p className="text-sm font-medium text-slate-400">{title}</p>
-        <p className="mt-2 truncate text-3xl font-bold tracking-tight text-white">
+        <p className="mt-2 truncate text-2xl font-bold tracking-tight text-white sm:text-3xl">
           {value}
         </p>
         <p className="mt-1 text-sm text-emerald-300">{detail}</p>
